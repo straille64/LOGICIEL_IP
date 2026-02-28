@@ -22,7 +22,7 @@ class TabScanner(ttk.Frame):
 
     def _build(self):
         # SCAN DE PLAGE
-        scan_frame = ttk.LabelFrame(self, text="Scan de plage IP", padding=10)
+        scan_frame = ttk.LabelFrame(self, text="Scan de plage IP")
         scan_frame.pack(fill=X, padx=10, pady=(10, 5))
 
         row1 = ttk.Frame(scan_frame)
@@ -62,7 +62,7 @@ class TabScanner(ttk.Frame):
             {"text": "Statut", "stretch": False, "width": 80},
             {"text": "RTT (ms)", "stretch": False, "width": 80},
         ]
-        self.table = Tableview(scan_frame, coldata=cols, rowdata=[], paginate=False,
+        self.table = Tableview(scan_frame, coldata=cols, rowdata=[], paginated=False,
                                bootstyle=INFO, stripecolor=None, height=8)
         self.table.pack(fill=BOTH, expand=True, pady=(5, 0))
 
@@ -73,7 +73,7 @@ class TabScanner(ttk.Frame):
         self.scan_count.pack(side=LEFT)
 
         # PING CONTINU
-        ping_frame = ttk.LabelFrame(self, text="Ping continu", padding=10)
+        ping_frame = ttk.LabelFrame(self, text="Ping continu")
         ping_frame.pack(fill=BOTH, expand=True, padx=10, pady=(5, 10))
 
         ping_row = ttk.Frame(ping_frame)

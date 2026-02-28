@@ -21,7 +21,7 @@ class TabConfig(ttk.Frame):
 
     def _build(self):
         # --- Carte réseau ---
-        iface_frame = ttk.LabelFrame(self, text="Carte réseau", padding=10)
+        iface_frame = ttk.LabelFrame(self, text="Carte réseau")
         iface_frame.pack(fill=X, padx=10, pady=(10, 5))
 
         self.iface_var = tk.StringVar()
@@ -31,7 +31,7 @@ class TabConfig(ttk.Frame):
         ttk.Button(iface_frame, text="↺ Rafraîchir", command=self._refresh_interfaces, bootstyle=SECONDARY).pack(side=LEFT)
 
         # --- Configuration IP ---
-        ip_frame = ttk.LabelFrame(self, text="Configuration IP", padding=10)
+        ip_frame = ttk.LabelFrame(self, text="Configuration IP")
         ip_frame.pack(fill=X, padx=10, pady=5)
 
         self.mode_var = tk.StringVar(value="dhcp")
@@ -53,7 +53,7 @@ class TabConfig(ttk.Frame):
         ttk.Button(ip_frame, text="Appliquer", command=self._apply_ip, bootstyle=SUCCESS).grid(row=6, column=1, sticky=W, pady=(10, 0))
 
         # --- Profils ---
-        prof_frame = ttk.LabelFrame(self, text="Profils", padding=10)
+        prof_frame = ttk.LabelFrame(self, text="Profils")
         prof_frame.pack(fill=X, padx=10, pady=5)
 
         self.profile_var = tk.StringVar()
@@ -64,7 +64,7 @@ class TabConfig(ttk.Frame):
         ttk.Button(prof_frame, text="Supprimer", command=self._delete_profile, bootstyle=DANGER).pack(side=LEFT, padx=2)
 
         # --- Outils rapides ---
-        tools_frame = ttk.LabelFrame(self, text="Outils rapides", padding=10)
+        tools_frame = ttk.LabelFrame(self, text="Outils rapides")
         tools_frame.pack(fill=BOTH, expand=True, padx=10, pady=5)
 
         btn_row = ttk.Frame(tools_frame)
