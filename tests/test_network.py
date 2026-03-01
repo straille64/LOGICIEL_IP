@@ -41,3 +41,4 @@ def test_apply_dhcp_already_active_does_not_raise(mock_run):
     """returncode=1 (already DHCP) must not raise."""
     mock_run.return_value = MagicMock(returncode=1)
     apply_dhcp("Ethernet")   # must NOT raise
+    assert mock_run.call_count == 2  # both address and dns commands must still run
