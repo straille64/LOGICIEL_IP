@@ -206,6 +206,9 @@ class TabConfig(ttk.Frame):
             self._refresh_tree()
         except FileExistsError as e:
             Messagebox.show_warning(str(e), title="Nom déjà utilisé")
+        except FileNotFoundError as e:
+            Messagebox.show_error(str(e), title="Erreur")
+            self._refresh_tree()
 
     def _rename_folder_node(self, folder: str):
         new_name = Querybox.get_string(
@@ -220,6 +223,9 @@ class TabConfig(ttk.Frame):
             self._refresh_tree()
         except FileExistsError as e:
             Messagebox.show_warning(str(e), title="Nom déjà utilisé")
+        except FileNotFoundError as e:
+            Messagebox.show_error(str(e), title="Erreur")
+            self._refresh_tree()
 
     def _move_profile_node(self, name: str, from_folder: str, to_folder: str):
         try:
@@ -227,6 +233,9 @@ class TabConfig(ttk.Frame):
             self._refresh_tree()
         except FileExistsError as e:
             Messagebox.show_warning(str(e), title="Conflit de nom")
+        except (FileNotFoundError, ValueError) as e:
+            Messagebox.show_error(str(e), title="Erreur")
+            self._refresh_tree()
 
     def _validate_name(self, name: str) -> bool:
         """Return True if name is safe for use as a filesystem entry and tree IID."""
