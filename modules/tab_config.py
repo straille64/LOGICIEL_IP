@@ -23,7 +23,7 @@ class TabConfig(ttk.Frame):
     # ------------------------------------------------------------------ layout
 
     def _build(self):
-        paned = ttk.PanedWindow(self, orient=HORIZONTAL)
+        paned = ttk.Panedwindow(self, orient=HORIZONTAL)
         paned.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
         left = ttk.Frame(paned, width=210)
