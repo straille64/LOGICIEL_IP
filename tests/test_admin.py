@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 
 def test_is_admin_returns_true_when_elevated():
