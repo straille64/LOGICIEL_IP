@@ -138,6 +138,8 @@ class TabConfig(ttk.Frame):
         try:
             data = self.pm.load(name, folder)
             mode = data.get("mode", "static")   # rétrocompat : défaut static
+            if mode not in ("dhcp", "static"):
+                mode = "static"
             self.mode_var.set(mode)
             self._toggle_mode()
             self.ip_vars["adresseip"].set(data.get("ip", ""))
