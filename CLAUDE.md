@@ -6,22 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Run the application
-python main.py
+C:\Python314\python.exe main.py
 
 # Run all tests
-pytest tests/ -v
+C:\Python314\python.exe -m pytest tests/ -v
 
 # Run a single test file
-pytest tests/test_profiles.py -v
+C:\Python314\python.exe -m pytest tests/test_profiles.py -v
 
 # Run a single test
-pytest tests/test_scanner.py::test_ping_host_alive -v
+C:\Python314\python.exe -m pytest tests/test_scanner.py::test_ping_host_alive -v
 
 # Build standalone .exe (output in dist/)
-pyinstaller build.spec --clean
+C:\Python314\python.exe -m PyInstaller build.spec --clean
 
 # Install dependencies
-pip install -r requirements.txt
+C:\Python314\python.exe -m pip install -r requirements.txt
 ```
 
 ## Architecture
