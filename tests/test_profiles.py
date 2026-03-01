@@ -125,3 +125,21 @@ def test_move_profile_to_root(tmp_path):
     pm.move("prof", from_folder="Clients", to_folder="")
     assert pm.load("prof") == SAMPLE
     assert not (tmp_path / "Clients" / "prof.json").exists()
+
+def test_move_profile_missing_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    with pytest.raises(FileNotFoundError):
+        pm.move("ghost", from_folder="", to_folder="Clients")
+
+def test_move_profile_collision_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("prof", SAMPLE)
+    pm.save("prof", SAMPLE, folder="Clients")
+    with pytest.raises(FileExistsError):
+        pm.move("prof", from_folder="", to_folder="Clients")
+
+def test_move_profile_same_destination_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("prof", SAMPLE)
+    with pytest.raises(ValueError):
+        pm.move("prof", from_folder="", to_folder="")
