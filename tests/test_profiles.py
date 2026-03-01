@@ -66,3 +66,29 @@ def test_list_profiles_backward_compat(tmp_path):
     all_profiles = pm.list_profiles()
     assert "root" in all_profiles
     assert "sub" in all_profiles
+
+
+# --- rename tests ---
+
+def test_rename_profile(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("ancien", SAMPLE)
+    pm.rename("ancien", "nouveau")
+    assert pm.load("nouveau") == SAMPLE
+    assert not (tmp_path / "ancien.json").exists()
+
+def test_rename_profile_in_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("ancien", SAMPLE, folder="Site")
+    pm.rename("ancien", "nouveau", folder="Site")
+    assert pm.load("nouveau", folder="Site") == SAMPLE
+    assert not (tmp_path / "Site" / "ancien.json").exists()
+
+def test_rename_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.create_folder("AncienDossier")
+    pm.save("p", SAMPLE, folder="AncienDossier")
+    pm.rename_folder("AncienDossier", "NouveauDossier")
+    assert "NouveauDossier" in pm.list_tree()
+    assert "AncienDossier" not in pm.list_tree()
+    assert pm.load("p", folder="NouveauDossier") == SAMPLE
