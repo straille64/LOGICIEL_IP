@@ -33,7 +33,7 @@ class ProfileManager:
             os.remove(path)
 
     def list_tree(self) -> dict[str, list[str]]:
-        """Return {folder_name: [profile_names]}. Key "" = root level."""
+        """Return {folder_name: [profile_names]}. Key "" = root level. One level deep only."""
         tree: dict[str, list[str]] = {"": []}
         for entry in os.scandir(self.profiles_dir):
             if entry.is_file() and entry.name.endswith(".json"):
