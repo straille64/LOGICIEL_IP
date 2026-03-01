@@ -1,12 +1,16 @@
 # build.spec
+from PyInstaller.utils.hooks import collect_all
+
+ttkb_datas, ttkb_binaries, ttkb_hiddenimports = collect_all('ttkbootstrap')
+
 block_cipher = None
 
 a = Analysis(
     ['main.py'],
     pathex=['.'],
-    binaries=[],
-    datas=[('profiles', 'profiles'), ('assets', 'assets')],
-    hiddenimports=['ttkbootstrap', 'psutil'],
+    binaries=ttkb_binaries,
+    datas=[('profiles', 'profiles'), ('assets', 'assets')] + ttkb_datas,
+    hiddenimports=['psutil'] + ttkb_hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
