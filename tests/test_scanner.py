@@ -32,6 +32,8 @@ def test_ping_host_alive(mock_run):
     result = ping_host("192.168.1.1", timeout_ms=500)
     assert result["alive"] is True
     assert result["ip"] == "192.168.1.1"
+    assert result["mac"] == ""
+    assert result["vendor"] == ""
 
 
 @patch("core.scanner.subprocess.run")
@@ -40,6 +42,8 @@ def test_ping_host_dead(mock_run):
     mock_run.return_value.stdout = ""
     result = ping_host("192.168.1.99", timeout_ms=500)
     assert result["alive"] is False
+    assert result["mac"] == ""
+    assert result["vendor"] == ""
 
 
 def test_get_mac_from_arp_found():
@@ -48,7 +52,7 @@ Interface: 192.168.1.1 --- 0x4
   Internet Address      Physical Address      Type
   192.168.1.10          aa-bb-cc-dd-ee-ff     dynamic
 """
-    with patch("subprocess.run") as mock_run:
+    with patch("core.scanner.subprocess.run") as mock_run:
         mock_run.return_value.stdout = arp_output
         mock_run.return_value.returncode = 0
         from core.scanner import get_mac_from_arp
@@ -56,7 +60,7 @@ Interface: 192.168.1.1 --- 0x4
         assert mac == "AA:BB:CC:DD:EE:FF"
 
 def test_get_mac_from_arp_not_found():
-    with patch("subprocess.run") as mock_run:
+    with patch("core.scanner.subprocess.run") as mock_run:
         mock_run.return_value.stdout = "No ARP Entries Found"
         mock_run.return_value.returncode = 1
         from core.scanner import get_mac_from_arp
