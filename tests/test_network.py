@@ -34,3 +34,10 @@ def test_apply_dhcp_calls_netsh(mock_run):
     assert mock_run.called
     cmd = mock_run.call_args[0][0]
     assert "dhcp" in cmd.lower()
+
+
+@patch("core.network.subprocess.run")
+def test_apply_dhcp_already_active_does_not_raise(mock_run):
+    """returncode=1 (already DHCP) must not raise."""
+    mock_run.return_value = MagicMock(returncode=1)
+    apply_dhcp("Ethernet")   # must NOT raise

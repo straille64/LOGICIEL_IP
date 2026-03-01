@@ -79,11 +79,14 @@ def apply_dns(iface_name: str, dns1: str, dns2: str = "") -> None:
 
 
 def apply_dhcp(iface_name: str) -> None:
-    """Passe l'interface en DHCP. Requiert droits admin."""
+    """Passe l'interface en DHCP. Requiert droits admin.
+    Idempotent : si l'interface est déjà en DHCP, netsh retourne
+    exit code 1 ('pas d'opération') — ce n'est pas une erreur.
+    """
     cmd1 = f'netsh interface ip set address name="{iface_name}" source=dhcp'
-    subprocess.run(cmd1, check=True, capture_output=True, shell=True)
+    subprocess.run(cmd1, capture_output=True, shell=True)  # check=False intentionnel
     cmd2 = f'netsh interface ip set dns name="{iface_name}" source=dhcp'
-    subprocess.run(cmd2, check=True, capture_output=True, shell=True)
+    subprocess.run(cmd2, capture_output=True, shell=True)  # check=False intentionnel
 
 
 def run_ipconfig() -> str:
