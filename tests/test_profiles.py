@@ -108,3 +108,20 @@ def test_rename_folder_collision_raises(tmp_path):
     with pytest.raises(FileExistsError):
         pm.rename_folder("Alpha", "Beta")
 
+
+# --- move tests ---
+
+def test_move_profile_to_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("prof", SAMPLE)
+    pm.create_folder("Clients")
+    pm.move("prof", from_folder="", to_folder="Clients")
+    assert pm.load("prof", folder="Clients") == SAMPLE
+    assert not (tmp_path / "prof.json").exists()
+
+def test_move_profile_to_root(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("prof", SAMPLE, folder="Clients")
+    pm.move("prof", from_folder="Clients", to_folder="")
+    assert pm.load("prof") == SAMPLE
+    assert not (tmp_path / "Clients" / "prof.json").exists()

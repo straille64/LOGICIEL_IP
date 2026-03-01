@@ -75,6 +75,19 @@ class ProfileManager:
             raise FileExistsError(f"Un dossier '{new_name}' existe déjà.")
         os.rename(src, dst)
 
+    def move(self, name: str, from_folder: str, to_folder: str) -> None:
+        """Déplace un profil JSON entre dossiers (from_folder="" ou to_folder="" = racine).
+        Lève FileNotFoundError si le profil source est absent.
+        Lève FileExistsError si la cible existe déjà."""
+        src = self._path(name, from_folder)
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Profil '{name}' introuvable.")
+        dst = self._path(name, to_folder)
+        if os.path.exists(dst):
+            raise FileExistsError(f"Un profil '{name}' existe déjà dans la destination.")
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.move(src, dst)
+
     def list_profiles(self) -> list[str]:
         """Backward-compatible flat list of all profiles across all folders."""
         result = []
