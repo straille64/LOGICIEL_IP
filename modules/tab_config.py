@@ -78,6 +78,8 @@ class TabConfig(ttk.Frame):
         if not iid or not iid.startswith("profile::"):
             return
         parts = iid.split("::")
+        if len(parts) < 3:
+            return
         folder, name = parts[1], parts[2]
         self._load_profile(name, folder)
 
@@ -92,6 +94,8 @@ class TabConfig(ttk.Frame):
                              command=lambda: self._delete_folder(folder))
         elif iid and iid.startswith("profile::"):
             parts = iid.split("::")
+            if len(parts) < 3:
+                return
             folder, name = parts[1], parts[2]
             menu.add_command(label="Supprimer le profil",
                              command=lambda: self._delete_profile_node(name, folder))
@@ -104,7 +108,7 @@ class TabConfig(ttk.Frame):
 
     def _new_folder(self):
         name = Querybox.get_string("Nom du dossier :", title="Nouveau dossier")
-        if name and name.strip():
+        if name and self._validate_name(name.strip()):
             self.pm.create_folder(name.strip())
             self._refresh_tree()
 
@@ -116,7 +120,7 @@ class TabConfig(ttk.Frame):
         elif iid and iid.startswith("profile::"):
             folder = iid.split("::")[1]
         name = Querybox.get_string("Nom du profil :", title="Sauvegarder le profil")
-        if not name or not name.strip():
+        if not name or not self._validate_name(name.strip()):
             return
         data = {
             "ip": self.ip_vars["adresseip"].get(),
@@ -143,12 +147,32 @@ class TabConfig(ttk.Frame):
             Messagebox.show_error(str(e), title="Erreur")
 
     def _delete_profile_node(self, name: str, folder: str = ""):
+        if not Messagebox.okcancel(f"Supprimer le profil '{name}' ?", title="Confirmation"):
+            return
         self.pm.delete(name, folder)
         self._refresh_tree()
 
     def _delete_folder(self, folder: str):
+        if not Messagebox.okcancel(f"Supprimer le dossier '{folder}' et tous ses profils ?", title="Confirmation"):
+            return
         self.pm.delete_folder(folder)
         self._refresh_tree()
+
+    def _validate_name(self, name: str) -> bool:
+        """Return True if name is safe for use as a filesystem entry and tree IID."""
+        forbidden = set('<>:"/\\|?*')
+        if not name or name.strip() != name:
+            return False
+        if any(c in forbidden for c in name):
+            Messagebox.show_warning(
+                "Le nom ne doit pas contenir les caractères : < > : \" / \\ | ? *",
+                title="Nom invalide"
+            )
+            return False
+        if "::" in name:
+            Messagebox.show_warning("Le nom ne doit pas contenir '::'.", title="Nom invalide")
+            return False
+        return True
 
     # ------------------------------------------------------------------ form pane
 
@@ -272,11 +296,14 @@ class TabConfig(ttk.Frame):
     def _run_ipconfig(self):
         def _task():
             output = run_ipconfig()
-            self.output_text.configure(state=NORMAL)
-            self.output_text.delete("1.0", tk.END)
-            self.output_text.insert(tk.END, output)
-            self.output_text.configure(state=DISABLED)
+            self.after(0, lambda: self._display_ipconfig(output))
         threading.Thread(target=_task, daemon=True).start()
+
+    def _display_ipconfig(self, output: str):
+        self.output_text.configure(state=NORMAL)
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.insert(tk.END, output)
+        self.output_text.configure(state=DISABLED)
 
     def _open_cmd(self):
         subprocess.Popen(["cmd.exe"],
