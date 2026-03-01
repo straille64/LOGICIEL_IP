@@ -57,7 +57,7 @@ def apply_static_ip(iface_name: str, ip: str, mask: str, gateway: str) -> None:
     """Applique une IP statique. Requiert droits admin."""
     cmd = (
         f"netsh interface ip set address"
-        f" name={iface_name} source=static"
+        f' name="{iface_name}" source=static'
         f" addr={ip} mask={mask} gateway={gateway}"
     )
     subprocess.run(cmd, check=True, capture_output=True, shell=True)
@@ -67,22 +67,22 @@ def apply_dns(iface_name: str, dns1: str, dns2: str = "") -> None:
     """Configure les serveurs DNS. Requiert droits admin."""
     cmd1 = (
         f"netsh interface ip set dns"
-        f" name={iface_name} source=static addr={dns1}"
+        f' name="{iface_name}" source=static addr={dns1}'
     )
     subprocess.run(cmd1, check=True, capture_output=True, shell=True)
     if dns2:
         cmd2 = (
             f"netsh interface ip add dns"
-            f" name={iface_name} addr={dns2} index=2"
+            f' name="{iface_name}" addr={dns2} index=2'
         )
         subprocess.run(cmd2, check=True, capture_output=True, shell=True)
 
 
 def apply_dhcp(iface_name: str) -> None:
     """Passe l'interface en DHCP. Requiert droits admin."""
-    cmd1 = f"netsh interface ip set address name={iface_name} source=dhcp"
+    cmd1 = f'netsh interface ip set address name="{iface_name}" source=dhcp'
     subprocess.run(cmd1, check=True, capture_output=True, shell=True)
-    cmd2 = f"netsh interface ip set dns name={iface_name} source=dhcp"
+    cmd2 = f'netsh interface ip set dns name="{iface_name}" source=dhcp'
     subprocess.run(cmd2, check=True, capture_output=True, shell=True)
 
 
