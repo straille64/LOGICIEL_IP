@@ -88,19 +88,50 @@ class TabConfig(ttk.Frame):
         if iid:
             self.tree.focus(iid)
         menu = tk.Menu(self, tearoff=0)
+
         if iid and iid.startswith("folder::"):
             folder = iid[len("folder::"):]
+            menu.add_command(label="Renommer le dossier",
+                             command=lambda: self._rename_folder_node(folder))
+            menu.add_separator()
             menu.add_command(label="Supprimer le dossier",
                              command=lambda: self._delete_folder(folder))
+
         elif iid and iid.startswith("profile::"):
             parts = iid.split("::")
             if len(parts) < 3:
                 return
             folder, name = parts[1], parts[2]
+
+            # ---- Renommer ----
+            menu.add_command(label="Renommer le profil",
+                             command=lambda: self._rename_profile_node(name, folder))
+
+            # ---- Déplacer vers ▸ ----
+            tree_data = self.pm.list_tree()
+            destinations = []
+            if folder != "":                          # in a subfolder → offer root
+                destinations.append(("Racine", ""))
+            for f in sorted(k for k in tree_data if k and k != folder):
+                destinations.append((f, f))
+
+            if destinations:
+                move_menu = tk.Menu(menu, tearoff=0)
+                for label, target_folder in destinations:
+                    move_menu.add_command(
+                        label=label,
+                        command=lambda n=name, src=folder, dst=target_folder:
+                            self._move_profile_node(n, src, dst)
+                    )
+                menu.add_cascade(label="Déplacer vers \u25b8", menu=move_menu)
+
+            menu.add_separator()
             menu.add_command(label="Supprimer le profil",
                              command=lambda: self._delete_profile_node(name, folder))
+
         else:
             menu.add_command(label="Nouveau dossier", command=self._new_folder)
+
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -161,6 +192,41 @@ class TabConfig(ttk.Frame):
             return
         self.pm.delete_folder(folder)
         self._refresh_tree()
+
+    def _rename_profile_node(self, name: str, folder: str = ""):
+        new_name = Querybox.get_string(
+            "Nouveau nom :", title="Renommer le profil",
+            initialvalue=name
+        )
+        if not new_name or not self._validate_name(new_name.strip()):
+            return
+        new_name = new_name.strip()
+        try:
+            self.pm.rename(name, new_name, folder)
+            self._refresh_tree()
+        except FileExistsError as e:
+            Messagebox.show_warning(str(e), title="Nom déjà utilisé")
+
+    def _rename_folder_node(self, folder: str):
+        new_name = Querybox.get_string(
+            "Nouveau nom :", title="Renommer le dossier",
+            initialvalue=folder
+        )
+        if not new_name or not self._validate_name(new_name.strip()):
+            return
+        new_name = new_name.strip()
+        try:
+            self.pm.rename_folder(folder, new_name)
+            self._refresh_tree()
+        except FileExistsError as e:
+            Messagebox.show_warning(str(e), title="Nom déjà utilisé")
+
+    def _move_profile_node(self, name: str, from_folder: str, to_folder: str):
+        try:
+            self.pm.move(name, from_folder, to_folder)
+            self._refresh_tree()
+        except FileExistsError as e:
+            Messagebox.show_warning(str(e), title="Conflit de nom")
 
     def _validate_name(self, name: str) -> bool:
         """Return True if name is safe for use as a filesystem entry and tree IID."""
