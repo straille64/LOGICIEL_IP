@@ -54,16 +54,22 @@ class ProfileManager:
             shutil.rmtree(path)
 
     def rename(self, old_name: str, new_name: str, folder: str = "") -> None:
-        """Renomme un profil JSON. Lève FileExistsError si new_name existe déjà."""
+        """Renomme un profil JSON. Lève FileNotFoundError si old_name absent,
+        FileExistsError si new_name existe déjà."""
         src = self._path(old_name, folder)
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Profil '{old_name}' introuvable.")
         dst = self._path(new_name, folder)
         if os.path.exists(dst):
             raise FileExistsError(f"Un profil '{new_name}' existe déjà.")
         os.rename(src, dst)
 
     def rename_folder(self, old_name: str, new_name: str) -> None:
-        """Renomme un dossier de profils. Lève FileExistsError si new_name existe déjà."""
+        """Renomme un dossier de profils. Lève FileNotFoundError si absent,
+        FileExistsError si new_name existe déjà."""
         src = os.path.join(self.profiles_dir, old_name)
+        if not os.path.isdir(src):
+            raise FileNotFoundError(f"Dossier '{old_name}' introuvable.")
         dst = os.path.join(self.profiles_dir, new_name)
         if os.path.exists(dst):
             raise FileExistsError(f"Un dossier '{new_name}' existe déjà.")

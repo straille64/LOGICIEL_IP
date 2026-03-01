@@ -92,3 +92,19 @@ def test_rename_folder(tmp_path):
     assert "NouveauDossier" in pm.list_tree()
     assert "AncienDossier" not in pm.list_tree()
     assert pm.load("p", folder="NouveauDossier") == SAMPLE
+
+
+def test_rename_profile_collision_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("a", SAMPLE)
+    pm.save("b", SAMPLE)
+    with pytest.raises(FileExistsError):
+        pm.rename("a", "b")
+
+def test_rename_folder_collision_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.create_folder("Alpha")
+    pm.create_folder("Beta")
+    with pytest.raises(FileExistsError):
+        pm.rename_folder("Alpha", "Beta")
+
