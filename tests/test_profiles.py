@@ -1,35 +1,68 @@
 # tests/test_profiles.py
-import json
-import os
 import pytest
 from core.profiles import ProfileManager
 
-
-@pytest.fixture
-def manager(tmp_path):
-    return ProfileManager(profiles_dir=str(tmp_path))
+SAMPLE = {"ip": "192.168.1.10", "mask": "255.255.255.0", "gateway": "192.168.1.1", "dns1": "", "dns2": ""}
 
 
-def test_save_and_load_profile(manager):
-    data = {"ip": "192.168.1.10", "mask": "255.255.255.0",
-            "gateway": "192.168.1.1", "dns1": "8.8.8.8", "dns2": "8.8.4.4"}
-    manager.save("Client_Test", data)
-    result = manager.load("Client_Test")
-    assert result == data
+# --- existing tests (keep passing) ---
 
+def test_save_and_load_profile(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("test", SAMPLE)
+    assert pm.load("test") == SAMPLE
 
-def test_list_profiles(manager):
-    manager.save("Prof_A", {"ip": "10.0.0.1", "mask": "", "gateway": "", "dns1": "", "dns2": ""})
-    manager.save("Prof_B", {"ip": "10.0.0.2", "mask": "", "gateway": "", "dns1": "", "dns2": ""})
-    assert set(manager.list_profiles()) == {"Prof_A", "Prof_B"}
+def test_list_profiles(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("a", SAMPLE)
+    pm.save("b", SAMPLE)
+    assert sorted(pm.list_profiles()) == ["a", "b"]
 
+def test_delete_profile(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("del_me", SAMPLE)
+    pm.delete("del_me")
+    assert "del_me" not in pm.list_profiles()
 
-def test_delete_profile(manager):
-    manager.save("ToDelete", {"ip": "1.1.1.1", "mask": "", "gateway": "", "dns1": "", "dns2": ""})
-    manager.delete("ToDelete")
-    assert "ToDelete" not in manager.list_profiles()
-
-
-def test_load_nonexistent_raises(manager):
+def test_load_nonexistent_raises(tmp_path):
+    pm = ProfileManager(str(tmp_path))
     with pytest.raises(FileNotFoundError):
-        manager.load("DoesNotExist")
+        pm.load("ghost")
+
+
+# --- new folder tests ---
+
+def test_save_and_load_in_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("prof1", SAMPLE, folder="Clients")
+    assert pm.load("prof1", folder="Clients") == SAMPLE
+
+def test_list_tree_root_and_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("root_prof", SAMPLE)
+    pm.save("client1", SAMPLE, folder="Clients")
+    pm.save("client2", SAMPLE, folder="Clients")
+    tree = pm.list_tree()
+    assert "root_prof" in tree[""]
+    assert sorted(tree["Clients"]) == ["client1", "client2"]
+
+def test_create_and_delete_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.create_folder("TestFolder")
+    assert "TestFolder" in pm.list_tree()
+    pm.delete_folder("TestFolder")
+    assert "TestFolder" not in pm.list_tree()
+
+def test_delete_profile_in_folder(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("x", SAMPLE, folder="Bureaux")
+    pm.delete("x", folder="Bureaux")
+    assert "x" not in pm.list_tree().get("Bureaux", [])
+
+def test_list_profiles_backward_compat(tmp_path):
+    pm = ProfileManager(str(tmp_path))
+    pm.save("root", SAMPLE)
+    pm.save("sub", SAMPLE, folder="Folder")
+    all_profiles = pm.list_profiles()
+    assert "root" in all_profiles
+    assert "sub" in all_profiles
