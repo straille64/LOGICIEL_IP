@@ -123,6 +123,7 @@ class TabConfig(ttk.Frame):
         if not name or not self._validate_name(name.strip()):
             return
         data = {
+            "mode": self.mode_var.get(),          # "dhcp" ou "static" — NOUVEAU
             "ip": self.ip_vars["adresseip"].get(),
             "mask": self.ip_vars["masque"].get(),
             "gateway": self.ip_vars["passerelle"].get(),
@@ -136,7 +137,8 @@ class TabConfig(ttk.Frame):
     def _load_profile(self, name: str, folder: str = ""):
         try:
             data = self.pm.load(name, folder)
-            self.mode_var.set("static")
+            mode = data.get("mode", "static")   # rétrocompat : défaut static
+            self.mode_var.set(mode)
             self._toggle_mode()
             self.ip_vars["adresseip"].set(data.get("ip", ""))
             self.ip_vars["masque"].set(data.get("mask", ""))
