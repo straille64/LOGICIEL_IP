@@ -58,9 +58,11 @@ class TabScanner(ttk.Frame):
 
         cols = [
             {"text": "Adresse IP", "stretch": False, "width": 130},
-            {"text": "Nom d'hote", "stretch": True},
-            {"text": "Statut", "stretch": False, "width": 80},
-            {"text": "RTT (ms)", "stretch": False, "width": 80},
+            {"text": "Nom d'hote", "stretch": False, "width": 160},
+            {"text": "Statut", "stretch": False, "width": 60},
+            {"text": "RTT (ms)", "stretch": False, "width": 70},
+            {"text": "Adresse MAC", "stretch": False, "width": 140},
+            {"text": "Fabricant", "stretch": True},
         ]
         self.table = Tableview(scan_frame, coldata=cols, rowdata=[], paginated=False,
                                bootstyle=INFO, stripecolor=None, height=8)
@@ -141,7 +143,7 @@ class TabScanner(ttk.Frame):
         for r in self._scan_results:
             status = "EN" if r["alive"] else "OFF"
             rtt = str(r["rtt_ms"]) if r["rtt_ms"] is not None else "-"
-            self.table.insert_row("end", [r["ip"], r["hostname"], status, rtt])
+            self.table.insert_row("end", [r["ip"], r["hostname"], status, rtt, r.get("mac", ""), r.get("vendor", "")])
         self.table.load_table_data()
         self.scan_count.configure(text=f"{len(alive)} actifs / {len(self._scan_results)} scannes")
         self.btn_scan_start.configure(state=NORMAL)
@@ -152,7 +154,7 @@ class TabScanner(ttk.Frame):
             return
         path = os.path.join(os.getcwd(), f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["ip", "hostname", "alive", "rtt_ms"])
+            writer = csv.DictWriter(f, fieldnames=["ip", "hostname", "alive", "rtt_ms", "mac", "vendor"])
             writer.writeheader()
             writer.writerows(self._scan_results)
 
