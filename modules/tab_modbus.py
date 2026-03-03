@@ -6,8 +6,6 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox, Querybox
 
-from pymodbus.exceptions import ConnectionException, ModbusException
-
 from core.modbus import ModbusClient, format_register_value
 
 
@@ -410,25 +408,6 @@ class TabModbus(ttk.Frame):
             )
             self._poll_thread.start()
             self.btn_stop_cyclic.config(state=NORMAL)
-
-    def _start_read(self):
-        if not self.mc.is_connected:
-            self.error_var.set("Non connecté.")
-            return
-        try:
-            slave, address, length = self._get_params()
-        except ValueError as e:
-            self.error_var.set(f"Paramètre invalide : {e}")
-            return
-        # Snapshot StringVars sur le main thread
-        fc_key = FC_KEYS.get(self.fc_var.get(), "fc3")
-        auto_reconnect = self.auto_reconnect_var.get()
-        self.error_var.set("")
-        threading.Thread(
-            target=self._do_read,
-            args=(slave, address, length, fc_key, auto_reconnect),
-            daemon=True,
-        ).start()
 
     def _do_read(self, slave: int, address: int, length: int, fc_key: str, auto_reconnect: bool):
         try:
