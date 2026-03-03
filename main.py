@@ -5,6 +5,7 @@ from ttkbootstrap.constants import *
 from core.admin import is_admin, restart_as_admin
 from modules.tab_config import TabConfig
 from modules.tab_scanner import TabScanner
+from modules.tab_modbus import TabModbus
 
 
 class App(ttk.Window):
@@ -23,6 +24,9 @@ class App(ttk.Window):
 
         tab_scan = TabScanner(self.notebook)
         self.notebook.add(tab_scan, text="  Scanner Réseau  ")
+
+        tab_modbus = TabModbus(self.notebook)
+        self.notebook.add(tab_modbus, text="  Modbus  ")
 
     def _build_status_bar(self):
         bar = ttk.Frame(self, bootstyle=DARK)
