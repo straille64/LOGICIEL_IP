@@ -60,6 +60,7 @@ class TabModbus(ttk.Frame):
         self._stop_event = threading.Event()
         self._poll_thread = None
         self._cyclic_interval = 1.0
+        self._conn_params: dict = {}
 
         self._build()
 
@@ -303,25 +304,47 @@ class TabModbus(ttk.Frame):
     def _do_connect(self):
         self.btn_connect.config(state=DISABLED)
         self.error_var.set("")
+        # Snapshot toutes les StringVars ici, sur le main thread
+        transport = self.transport_var.get()
+        if transport == "TCP/IP":
+            try:
+                port = int(self.port_var.get().strip() or "502")
+            except ValueError:
+                port = 502
+            self._conn_params = {
+                "type": "tcp",
+                "host": self.host_var.get().strip(),
+                "port": port,
+            }
+        else:
+            try:
+                baud = int(self.baud_var.get())
+                bytesize = int(self.bytesize_var.get())
+                stopbits = int(self.stopbits_var.get())
+            except ValueError:
+                baud, bytesize, stopbits = 9600, 8, 1
+            self._conn_params = {
+                "type": "rtu",
+                "com":      self.com_var.get().strip(),
+                "baud":     baud,
+                "parity":   self.parity_var.get(),
+                "bytesize": bytesize,
+                "stopbits": stopbits,
+            }
+        params = dict(self._conn_params)  # copie immuable pour le thread
 
         def _task():
             try:
-                transport = self.transport_var.get()
-                if transport == "TCP/IP":
-                    host = self.host_var.get().strip()
-                    port = int(self.port_var.get().strip() or "502")
-                    self.mc.connect_tcp(host, port)
-                    self.after(0, lambda: self._set_status(
-                        f"Connecté à {host}:{port}", connected=True))
+                if params["type"] == "tcp":
+                    self.mc.connect_tcp(params["host"], params["port"])
+                    msg = f"Connecté à {params['host']}:{params['port']}"
                 else:
-                    com  = self.com_var.get().strip()
-                    baud = int(self.baud_var.get())
-                    par  = self.parity_var.get()
-                    bits = int(self.bytesize_var.get())
-                    stop = int(self.stopbits_var.get())
-                    self.mc.connect_rtu(com, baud, par, bits, stop)
-                    self.after(0, lambda: self._set_status(
-                        f"Connecté à {com} @ {baud} {par}{bits}{stop}", connected=True))
+                    self.mc.connect_rtu(
+                        params["com"], params["baud"], params["parity"],
+                        params["bytesize"], params["stopbits"],
+                    )
+                    msg = f"Connecté à {params['com']} @ {params['baud']}"
+                self.after(0, lambda m=msg: self._set_status(m, connected=True))
             except Exception as exc:
                 self.after(0, lambda e=str(exc): self._on_connect_error(e))
 
@@ -353,11 +376,37 @@ class TabModbus(ttk.Frame):
         return slave, address, length
 
     def _start_read_with_cyclic(self):
-        self._start_read()
-        if self.cyclic_var.get() and not self._stop_event.is_set():
+        if not self.mc.is_connected:
+            self.error_var.set("Non connecté.")
+            return
+        try:
+            slave, address, length = self._get_params()
+        except ValueError as e:
+            self.error_var.set(f"Paramètre invalide : {e}")
+            return
+        # Snapshot StringVars sur le main thread
+        fc_key = FC_KEYS.get(self.fc_var.get(), "fc3")
+        auto_reconnect = self.auto_reconnect_var.get()
+        self.error_var.set("")
+
+        # Lecture immédiate
+        threading.Thread(
+            target=self._do_read,
+            args=(slave, address, length, fc_key, auto_reconnect),
+            daemon=True,
+        ).start()
+
+        # Démarrage du cycle si activé
+        if self.cyclic_var.get():
+            # Arrêter un cycle déjà en cours avant d'en démarrer un nouveau
+            self._stop_event.set()
+            if self._poll_thread is not None and self._poll_thread.is_alive():
+                self._poll_thread.join(timeout=self._cyclic_interval + 1.0)
             self._stop_event.clear()
             self._poll_thread = threading.Thread(
-                target=self._poll_loop, daemon=True
+                target=self._poll_loop,
+                args=((slave, address, length), fc_key, auto_reconnect),
+                daemon=True,
             )
             self._poll_thread.start()
             self.btn_stop_cyclic.config(state=NORMAL)
@@ -371,20 +420,23 @@ class TabModbus(ttk.Frame):
         except ValueError as e:
             self.error_var.set(f"Paramètre invalide : {e}")
             return
+        # Snapshot StringVars sur le main thread
+        fc_key = FC_KEYS.get(self.fc_var.get(), "fc3")
+        auto_reconnect = self.auto_reconnect_var.get()
         self.error_var.set("")
         threading.Thread(
-            target=self._do_read, args=(slave, address, length), daemon=True
+            target=self._do_read,
+            args=(slave, address, length, fc_key, auto_reconnect),
+            daemon=True,
         ).start()
 
-    def _do_read(self, slave: int, address: int, length: int):
-        fc_label = self.fc_var.get()
-        fc_key   = FC_KEYS.get(fc_label, "fc3")
+    def _do_read(self, slave: int, address: int, length: int, fc_key: str, auto_reconnect: bool):
         try:
             values = self._call_read(fc_key, slave, address, length)
             self.after(0, lambda v=values, a=address: self._populate_table(a, v))
-        except (ConnectionException, ModbusException, Exception) as exc:
+        except Exception as exc:
             self.after(0, lambda e=str(exc): self.error_var.set(str(e)))
-            if self.auto_reconnect_var.get():
+            if auto_reconnect:
                 self._try_reconnect()
 
     def _call_read(self, fc_key: str, slave: int, address: int, count: int):
@@ -513,23 +565,20 @@ class TabModbus(ttk.Frame):
             except ValueError:
                 pass
 
-    def _poll_loop(self):
+    def _poll_loop(self, params: tuple, fc_key: str, auto_reconnect: bool):
+        """Boucle de polling — reçoit les paramètres du main thread (thread-safe)."""
+        slave, address, length = params
         while not self._stop_event.wait(timeout=self._cyclic_interval):
             if not self.mc.is_connected:
                 break
-            try:
-                slave, address, length = self._get_params()
-            except ValueError:
-                break
-            fc_label = self.fc_var.get()
-            fc_key   = FC_KEYS.get(fc_label, "fc3")
             try:
                 values = self._call_read(fc_key, slave, address, length)
                 self.after(0, lambda v=values, a=address: self._populate_table(a, v))
             except Exception as exc:
                 self.after(0, lambda e=str(exc): self.error_var.set(str(e)))
-                if self.auto_reconnect_var.get():
+                if auto_reconnect:
                     self._try_reconnect()
+        # Désactiver le bouton via self.after (thread-safe)
         self.after(0, lambda: self.btn_stop_cyclic.config(state=DISABLED))
 
     def _stop_cyclic(self):
@@ -539,20 +588,18 @@ class TabModbus(ttk.Frame):
     # ─── Reconnexion auto ────────────────────────────────────────────────────
 
     def _try_reconnect(self):
+        """Tentative silencieuse de reconnexion (appelée depuis thread background)."""
+        params = self._conn_params
+        if not params:
+            return
         try:
             self.mc.disconnect()
-            if self.transport_var.get() == "TCP/IP":
-                self.mc.connect_tcp(
-                    self.host_var.get().strip(),
-                    int(self.port_var.get().strip() or "502"),
-                )
+            if params["type"] == "tcp":
+                self.mc.connect_tcp(params["host"], params["port"])
             else:
                 self.mc.connect_rtu(
-                    self.com_var.get().strip(),
-                    int(self.baud_var.get()),
-                    self.parity_var.get(),
-                    int(self.bytesize_var.get()),
-                    int(self.stopbits_var.get()),
+                    params["com"], params["baud"], params["parity"],
+                    params["bytesize"], params["stopbits"],
                 )
         except Exception:
             pass
