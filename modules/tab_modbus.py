@@ -278,13 +278,13 @@ class TabModbus(ttk.Frame):
         self.tree.pack(side=LEFT, fill=BOTH, expand=True)
         vsb.pack(side=RIGHT, fill=Y)
 
-        err_frame = ttk.LabelFrame(parent, text="Erreur", padding=4)
+        err_frame = ttk.LabelFrame(parent, text="Erreur")
         err_frame.pack(fill=X, padx=2, pady=(2, 0))
         self.error_var = tk.StringVar(value="")
         ttk.Label(
             err_frame, textvariable=self.error_var,
             bootstyle=DANGER, wraplength=400,
-        ).pack(anchor=W)
+        ).pack(anchor=W, padx=4, pady=2)
 
     # ─── Barre statut ─────────────────────────────────────────────────────────
 
