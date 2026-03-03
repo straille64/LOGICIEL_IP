@@ -170,3 +170,22 @@ def test_format_ascii():
     # 0x4865 = "He"
     result = format_register_value(0x4865, "ascii")
     assert result == "He"
+
+
+def test_format_int16_unsigned_flag():
+    # unsigned=True → traiter comme uint16, 65535 reste 65535
+    assert format_register_value(65535, "int16", unsigned=True) == "65535"
+
+
+def test_format_int16_bin_negative():
+    # num_base="bin" sur valeur négative (int16) → ne doit pas lever ValueError
+    # 0xFFFF = -1 en int16, mais en bin doit afficher les bits bruts
+    result = format_register_value(65535, "int16", num_base="bin")
+    assert result == "1111111111111111"  # 16 bits bruts
+
+
+def test_format_int32_hex():
+    # int32 avec num_base="hex" doit retourner hex
+    # 0x00010002 = 65538 en uint32
+    result = format_register_value([1, 2], "int32", num_base="hex")
+    assert result == "0x10002"

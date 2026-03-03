@@ -133,7 +133,7 @@ def format_register_value(
     num_base: str = "dec",
     swap_bytes: bool = False,
     swap_words: bool = False,
-    unsigned: bool = True,
+    unsigned: bool = False,
 ) -> str:
     """Formate une valeur brute Modbus selon le mode d'affichage.
 
@@ -168,10 +168,17 @@ def format_register_value(
             return _int_fmt(r0 & 0xFFFF)
 
         case "int16":
-            v = r0 & 0xFFFF
-            if v >= 0x8000:
-                v -= 0x10000
-            return _int_fmt(v) if num_base != "hex" else f"0x{r0 & 0xFFFF:X}"
+            v_raw = r0 & 0xFFFF
+            if unsigned:
+                # Traiter comme uint16 (pas de sign extension)
+                return _int_fmt(v_raw)
+            else:
+                v_signed = v_raw - 0x10000 if v_raw >= 0x8000 else v_raw
+                if num_base == "dec":
+                    return str(v_signed)
+                else:
+                    # hex/bin : afficher les bits bruts non signés
+                    return _int_fmt(v_raw)
 
         case "float32":
             if swap_words:
@@ -198,6 +205,9 @@ def format_register_value(
                 combined = ((r0 & 0xFFFF) << 16) | (r1 & 0xFFFF)
             if combined >= 0x80000000:
                 combined -= 0x100000000
+            if num_base != "dec":
+                # Pour hex/bin, afficher les bits bruts unsigned 32 bits
+                return _int_fmt(combined & 0xFFFFFFFF)
             return str(combined)
 
         case "bin":
