@@ -3,15 +3,17 @@ from PyInstaller.utils.hooks import collect_all
 
 ttkb_datas, ttkb_binaries, ttkb_hiddenimports = collect_all('ttkbootstrap')
 mac_datas, mac_binaries, mac_hiddenimports = collect_all('mac_vendor_lookup')
+pymod_datas, pymod_binaries, pymod_hiddenimports = collect_all('pymodbus')
+serial_datas, serial_binaries, serial_hiddenimports = collect_all('serial')
 
 block_cipher = None
 
 a = Analysis(
     ['main.py'],
     pathex=['.'],
-    binaries=ttkb_binaries + mac_binaries,
-    datas=[('profiles', 'profiles'), ('assets', 'assets')] + ttkb_datas + mac_datas,
-    hiddenimports=['psutil'] + ttkb_hiddenimports + mac_hiddenimports,
+    binaries=ttkb_binaries + mac_binaries + pymod_binaries + serial_binaries,
+    datas=[('profiles', 'profiles'), ('assets', 'assets')] + ttkb_datas + mac_datas + pymod_datas + serial_datas,
+    hiddenimports=['psutil'] + ttkb_hiddenimports + mac_hiddenimports + pymod_hiddenimports + serial_hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
