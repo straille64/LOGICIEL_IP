@@ -213,10 +213,10 @@ def format_register_value(
         case "bin":
             return f"{r0 & 0xFFFF:016b}"
 
-        case "ascii":
+        case "octet":
             high = (r0 >> 8) & 0xFF
-            low = r0 & 0xFF
-            return "".join(chr(b) if 32 <= b < 127 else "." for b in [high, low])
+            low  = r0 & 0xFF
+            return f"{high} | {low}"
 
         case _:
             return str(r0)

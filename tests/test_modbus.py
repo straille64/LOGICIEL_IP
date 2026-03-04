@@ -166,10 +166,17 @@ def test_format_float32():
     assert float(result) == pytest.approx(1.0, abs=1e-4)
 
 
-def test_format_ascii():
-    # 0x4865 = "He"
-    result = format_register_value(0x4865, "ascii")
-    assert result == "He"
+def test_format_octet():
+    # Registre 22 = 0x0016 → octet haut=0, octet bas=22
+    assert format_register_value(22, "octet") == "0 | 22"
+
+def test_format_octet_high_byte():
+    # Registre 0x1600 = 5632 → octet haut=22, octet bas=0
+    assert format_register_value(0x1600, "octet") == "22 | 0"
+
+def test_format_octet_max():
+    # Registre 0xFFFF → 255 | 255
+    assert format_register_value(0xFFFF, "octet") == "255 | 255"
 
 
 def test_format_int16_unsigned_flag():
