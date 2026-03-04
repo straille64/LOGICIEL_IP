@@ -33,7 +33,8 @@ DISPLAY_MODES = [
     ("Entier 32 bits (2 reg)", "uint32"),
     ("Signé 32 bits (2 reg)",  "int32"),
     ("Binaire",                "bin"),
-    ("ASCII",                  "ascii"),
+    ("Octet (H|L)",            "octet"),
+    ("CHAMP DE BITS",          "bits"),
 ]
 DISPLAY_LABELS = [d[0] for d in DISPLAY_MODES]
 DISPLAY_KEY    = {d[0]: d[1] for d in DISPLAY_MODES}
@@ -434,6 +435,16 @@ class TabModbus(ttk.Frame):
         swap_bytes = self.swap_bytes_var.get()
         swap_words = self.swap_words_var.get()
         unsigned   = self.unsigned_var.get()
+
+        # Mode spécial : décomposer chaque registre en 16 bits individuels
+        if display_mode == "bits":
+            for i, raw_val in enumerate(values):
+                reg_addr = base_address + i
+                v = int(raw_val)
+                for bit in range(16):
+                    bit_val = (v >> bit) & 1
+                    self.tree.insert("", END, values=(f"{reg_addr}.{bit:02d}", str(bit_val)))
+            return
 
         step = 2 if display_mode in ("float32", "uint32", "int32") else 1
         i = 0
