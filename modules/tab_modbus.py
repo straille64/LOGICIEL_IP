@@ -7,6 +7,7 @@ from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Messagebox, Querybox
 
 from core.modbus import ModbusClient, format_register_value
+from modules.dialog_register_detail import RegisterDetailDialog
 
 
 # ─── Constantes ──────────────────────────────────────────────────────────────
@@ -285,6 +286,7 @@ class TabModbus(ttk.Frame):
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.pack(side=LEFT, fill=BOTH, expand=True)
         vsb.pack(side=RIGHT, fill=Y)
+        self.tree.bind("<Double-1>", self._on_tree_double_click)
 
         err_frame = ttk.LabelFrame(parent, text="Erreur")
         err_frame.pack(fill=X, padx=2, pady=(2, 0))
@@ -475,6 +477,26 @@ class TabModbus(ttk.Frame):
         """Recalcule l affichage depuis le cache sans nouvelle requete Modbus."""
         if self._raw_cache:
             self._populate_table(self._cache_address, self._raw_cache)
+
+    def _on_tree_double_click(self, event):
+        """Ouvre la popup de details pour le registre double-clique."""
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+        reg_str = self.tree.set(item, "reg")
+        # Gerer le format "100.00" (mode CHAMP DE BITS) -> prendre juste l'adresse entiere
+        try:
+            address = int(str(reg_str).split(".")[0])
+        except (ValueError, AttributeError):
+            return
+        if not self._raw_cache:
+            return
+        i = address - self._cache_address
+        if not (0 <= i < len(self._raw_cache)):
+            return
+        w0 = int(self._raw_cache[i]) if not isinstance(self._raw_cache[i], bool) else int(self._raw_cache[i])
+        w1 = int(self._raw_cache[i + 1]) if (i + 1) < len(self._raw_cache) else 0
+        RegisterDetailDialog(self, address, w0, w1)
 
     # ═════════════════════════════════════════════════════════════════════════
     # ÉCRITURE
