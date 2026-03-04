@@ -85,7 +85,7 @@ def test_read_holding_registers_returns_list(connected_client):
     mock_inner.read_holding_registers.return_value = resp
     result = c.read_holding_registers(1, 0, 3)
     assert result == [100, 200, 300]
-    mock_inner.read_holding_registers.assert_called_once_with(0, 3, slave=1)
+    mock_inner.read_holding_registers.assert_called_once_with(0, 3, device_id=1)
 
 
 def test_read_raises_when_not_connected(client):
@@ -113,7 +113,7 @@ def test_write_coil_calls_fc5(connected_client):
     resp.isError.return_value = False
     mock_inner.write_coil.return_value = resp
     c.write_coil(1, 5, True)
-    mock_inner.write_coil.assert_called_once_with(5, True, slave=1)
+    mock_inner.write_coil.assert_called_once_with(5, True, device_id=1)
 
 
 # ─── Écriture FC6 ────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ def test_write_register_calls_fc6(connected_client):
     resp.isError.return_value = False
     mock_inner.write_register.return_value = resp
     c.write_register(1, 10, 1500)
-    mock_inner.write_register.assert_called_once_with(10, 1500, slave=1)
+    mock_inner.write_register.assert_called_once_with(10, 1500, device_id=1)
 
 
 # ─── Erreur Modbus remontée ───────────────────────────────────────────────────

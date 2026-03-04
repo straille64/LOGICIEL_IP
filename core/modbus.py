@@ -73,28 +73,28 @@ class ModbusClient:
     def read_coils(self, slave_id: int, address: int, count: int) -> list:
         """FC1 — Lit des coils (bits R/W). Retourne list[bool]."""
         self._check()
-        rr = self._client.read_coils(address, count, slave=slave_id)
+        rr = self._client.read_coils(address, count, device_id=slave_id)
         self._check_error(rr, "FC1 read_coils")
         return list(rr.bits[:count])
 
     def read_discrete_inputs(self, slave_id: int, address: int, count: int) -> list:
         """FC2 — Lit des entrées discrètes (bits RO). Retourne list[bool]."""
         self._check()
-        rr = self._client.read_discrete_inputs(address, count, slave=slave_id)
+        rr = self._client.read_discrete_inputs(address, count, device_id=slave_id)
         self._check_error(rr, "FC2 read_discrete_inputs")
         return list(rr.bits[:count])
 
     def read_holding_registers(self, slave_id: int, address: int, count: int) -> list:
         """FC3 — Lit des holding registers (mots R/W). Retourne list[int]."""
         self._check()
-        rr = self._client.read_holding_registers(address, count, slave=slave_id)
+        rr = self._client.read_holding_registers(address, count, device_id=slave_id)
         self._check_error(rr, "FC3 read_holding_registers")
         return list(rr.registers)
 
     def read_input_registers(self, slave_id: int, address: int, count: int) -> list:
         """FC4 — Lit des input registers (mots RO). Retourne list[int]."""
         self._check()
-        rr = self._client.read_input_registers(address, count, slave=slave_id)
+        rr = self._client.read_input_registers(address, count, device_id=slave_id)
         self._check_error(rr, "FC4 read_input_registers")
         return list(rr.registers)
 
@@ -103,25 +103,25 @@ class ModbusClient:
     def write_coil(self, slave_id: int, address: int, value: bool) -> None:
         """FC5 — Écrit 1 coil."""
         self._check()
-        rr = self._client.write_coil(address, value, slave=slave_id)
+        rr = self._client.write_coil(address, value, device_id=slave_id)
         self._check_error(rr, "FC5 write_coil")
 
     def write_register(self, slave_id: int, address: int, value: int) -> None:
         """FC6 — Écrit 1 registre (16 bits)."""
         self._check()
-        rr = self._client.write_register(address, value, slave=slave_id)
+        rr = self._client.write_register(address, value, device_id=slave_id)
         self._check_error(rr, "FC6 write_register")
 
     def write_coils(self, slave_id: int, address: int, values: list) -> None:
         """FC15 — Écrit plusieurs coils. values: list[bool]."""
         self._check()
-        rr = self._client.write_coils(address, values, slave=slave_id)
+        rr = self._client.write_coils(address, values, device_id=slave_id)
         self._check_error(rr, "FC15 write_coils")
 
     def write_registers(self, slave_id: int, address: int, values: list) -> None:
         """FC16 — Écrit plusieurs registres. values: list[int]."""
         self._check()
-        rr = self._client.write_registers(address, values, slave=slave_id)
+        rr = self._client.write_registers(address, values, device_id=slave_id)
         self._check_error(rr, "FC16 write_registers")
 
 
