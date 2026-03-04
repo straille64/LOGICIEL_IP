@@ -139,7 +139,7 @@ def format_register_value(
 
     Args:
         raw: int (1 registre) ou list[int] (>=2 registres pour float32/int32/uint32)
-        display_mode: "uint16" | "int16" | "float32" | "uint32" | "int32" | "bin" | "ascii"
+        display_mode: "uint16" | "int16" | "float32" | "uint32" | "int32" | "bin" | "octet"
         num_base: "dec" | "hex" | "bin" (s'applique uniquement aux entiers)
         swap_bytes: inverser les octets dans chaque mot 16 bits
         swap_words: inverser l'ordre des deux mots pour les formats 32 bits
