@@ -73,28 +73,28 @@ class ModbusClient:
     def read_coils(self, slave_id: int, address: int, count: int) -> list:
         """FC1 — Lit des coils (bits R/W). Retourne list[bool]."""
         self._check()
-        rr = self._client.read_coils(address, count, device_id=slave_id)
+        rr = self._client.read_coils(address, count=count, device_id=slave_id)
         self._check_error(rr, "FC1 read_coils")
         return list(rr.bits[:count])
 
     def read_discrete_inputs(self, slave_id: int, address: int, count: int) -> list:
         """FC2 — Lit des entrées discrètes (bits RO). Retourne list[bool]."""
         self._check()
-        rr = self._client.read_discrete_inputs(address, count, device_id=slave_id)
+        rr = self._client.read_discrete_inputs(address, count=count, device_id=slave_id)
         self._check_error(rr, "FC2 read_discrete_inputs")
         return list(rr.bits[:count])
 
     def read_holding_registers(self, slave_id: int, address: int, count: int) -> list:
         """FC3 — Lit des holding registers (mots R/W). Retourne list[int]."""
         self._check()
-        rr = self._client.read_holding_registers(address, count, device_id=slave_id)
+        rr = self._client.read_holding_registers(address, count=count, device_id=slave_id)
         self._check_error(rr, "FC3 read_holding_registers")
         return list(rr.registers)
 
     def read_input_registers(self, slave_id: int, address: int, count: int) -> list:
         """FC4 — Lit des input registers (mots RO). Retourne list[int]."""
         self._check()
-        rr = self._client.read_input_registers(address, count, device_id=slave_id)
+        rr = self._client.read_input_registers(address, count=count, device_id=slave_id)
         self._check_error(rr, "FC4 read_input_registers")
         return list(rr.registers)
 

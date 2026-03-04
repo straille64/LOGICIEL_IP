@@ -85,7 +85,7 @@ def test_read_holding_registers_returns_list(connected_client):
     mock_inner.read_holding_registers.return_value = resp
     result = c.read_holding_registers(1, 0, 3)
     assert result == [100, 200, 300]
-    mock_inner.read_holding_registers.assert_called_once_with(0, 3, device_id=1)
+    mock_inner.read_holding_registers.assert_called_once_with(0, count=3, device_id=1)
 
 
 def test_read_raises_when_not_connected(client):
