@@ -494,7 +494,7 @@ class TabModbus(ttk.Frame):
         i = address - self._cache_address
         if not (0 <= i < len(self._raw_cache)):
             return
-        w0 = int(self._raw_cache[i]) if not isinstance(self._raw_cache[i], bool) else int(self._raw_cache[i])
+        w0 = int(self._raw_cache[i])
         w1 = int(self._raw_cache[i + 1]) if (i + 1) < len(self._raw_cache) else 0
         RegisterDetailDialog(self, address, w0, w1)
 
