@@ -60,6 +60,8 @@ class TabModbus(ttk.Frame):
         self._poll_thread = None
         self._cyclic_interval = 1.0
         self._conn_params: dict = {}
+        self._raw_cache: list = []
+        self._cache_address: int = 0
 
         self._build()
 
@@ -259,6 +261,11 @@ class TabModbus(ttk.Frame):
             values=DISPLAY_LABELS, state="readonly", width=18,
         ).pack(padx=6, pady=2)
 
+        # Rafraîchissement dynamique — bindings après création de tous les widgets
+        for var in (self.swap_bytes_var, self.swap_words_var, self.unsigned_var):
+            var.trace_add("write", self._refresh_display)
+        self.display_var.trace_add("write", self._refresh_display)
+
     def _build_right_panel(self, parent):
         table_frame = ttk.Frame(parent)
         table_frame.pack(fill=BOTH, expand=True)
@@ -352,6 +359,8 @@ class TabModbus(ttk.Frame):
     def _do_disconnect(self):
         self._stop_cyclic()
         self.mc.disconnect()
+        self._raw_cache = []
+        self._cache_address = 0
         self._set_status("Déconnecté", connected=False)
 
     def _set_status(self, msg: str, connected: bool):
@@ -428,6 +437,11 @@ class TabModbus(ttk.Frame):
             case _:     raise ValueError(f"FC de lecture inconnu : {fc_key}")
 
     def _populate_table(self, base_address: int, values: list):
+        if not values:
+            return
+        self._cache_address = base_address
+        self._raw_cache = list(values)
+
         self.tree.delete(*self.tree.get_children())
         display_mode = DISPLAY_KEY.get(self.display_var.get(), "uint16")
         num_base     = {"DÉCIMAL": "dec", "HEX": "hex", "BINAIRE": "bin"}.get(
@@ -456,6 +470,11 @@ class TabModbus(ttk.Frame):
             )
             self.tree.insert("", END, values=(reg_addr, formatted))
             i += step
+
+    def _refresh_display(self, *_):
+        """Recalcule l affichage depuis le cache sans nouvelle requete Modbus."""
+        if self._raw_cache:
+            self._populate_table(self._cache_address, self._raw_cache)
 
     # ═════════════════════════════════════════════════════════════════════════
     # ÉCRITURE
