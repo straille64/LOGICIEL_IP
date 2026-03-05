@@ -227,6 +227,105 @@ class RegisterDetailDialog(tk.Toplevel):
             ttk.Checkbutton(opts, text=text, variable=var,
                             command=self._refresh).pack(anchor=W, pady=2)
 
+
+    def _inject_byte(self, byte_index: int, byte_val: int) -> None:
+        """Injecte un octet (0-255) à la position byte_index dans _w0/_w1.
+
+        byte_index : 0=Octet3 (MSB), 1=Octet2, 2=Octet1, 3=Octet0 (LSB).
+        Tient compte de swap_words et swap_bytes.
+        """
+        sw = self.swap_words_var.get()
+        sb = self.swap_bytes_var.get()
+
+        if sb:
+            byte_index = [1, 0, 3, 2][byte_index]
+
+        hi_attr, lo_attr = ("_w1", "_w0") if sw else ("_w0", "_w1")
+
+        if byte_index == 0:
+            hi = getattr(self, hi_attr)
+            setattr(self, hi_attr, (hi & 0x00FF) | (byte_val << 8))
+        elif byte_index == 1:
+            hi = getattr(self, hi_attr)
+            setattr(self, hi_attr, (hi & 0xFF00) | byte_val)
+        elif byte_index == 2:
+            lo = getattr(self, lo_attr)
+            setattr(self, lo_attr, (lo & 0x00FF) | (byte_val << 8))
+        elif byte_index == 3:
+            lo = getattr(self, lo_attr)
+            setattr(self, lo_attr, (lo & 0xFF00) | byte_val)
+
+        self._w0 &= 0xFFFF
+        self._w1 &= 0xFFFF
+
+    def _on_bit_click(self, bit: int) -> None:
+        """Callback quand un bit est cliqué."""
+        if self._updating:
+            return
+        self._updating = True
+        try:
+            if bit < 16:
+                if self._bit_vars[bit].get():
+                    self._w0 |= (1 << bit)
+                else:
+                    self._w0 &= ~(1 << bit)
+            else:
+                b = bit - 16
+                if self._bit_vars[bit].get():
+                    self._w1 |= (1 << b)
+                else:
+                    self._w1 &= ~(1 << b)
+            self._w0 &= 0xFFFF
+            self._w1 &= 0xFFFF
+            self._refresh()
+        finally:
+            self._updating = False
+
+    def _on_change(self, source: str) -> None:
+        """Callback commun pour tous les Entry éditables. Anti-boucle via _updating."""
+        if self._updating:
+            return
+        self._updating = True
+        try:
+            sw = self.swap_words_var.get()
+            hi_attr, lo_attr = ("_w1", "_w0") if sw else ("_w0", "_w1")
+
+            if source.startswith("bin"):
+                idx = int(source[3])
+                byte_val = parse_bin_byte(self._bin_vars[idx].get())
+                self._inject_byte(idx, byte_val)
+
+            elif source.startswith("oct"):
+                idx = int(source[3])
+                byte_val = parse_octet(self._oct_vars[idx].get())
+                self._inject_byte(idx, byte_val)
+
+            elif source == "mot16_0":
+                val = parse_mot16(self._mot16_vars[0].get())
+                setattr(self, hi_attr, val)
+
+            elif source == "mot16_1":
+                val = parse_mot16(self._mot16_vars[1].get())
+                setattr(self, lo_attr, val)
+
+            elif source == "mot32":
+                val = parse_mot32(self._mot32_var.get())
+                setattr(self, hi_attr, (val >> 16) & 0xFFFF)
+                setattr(self, lo_attr, val & 0xFFFF)
+
+            elif source == "reel32":
+                w_hi, w_lo = parse_reel32_to_words(self._reel32_var.get())
+                setattr(self, hi_attr, w_hi)
+                setattr(self, lo_attr, w_lo)
+
+            self._refresh()
+
+        except ValueError:
+            pass
+
+        finally:
+            self._updating = False
+
     def _build_buttons(self, parent):
         btn_frame = ttk.Frame(parent)
         btn_frame.pack(fill=X)
