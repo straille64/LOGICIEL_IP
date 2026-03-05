@@ -273,14 +273,20 @@ class TabModbus(ttk.Frame):
 
         self.tree = ttk.Treeview(
             table_frame,
-            columns=("reg", "val"),
+            columns=("reg", "sep", "val"),
             show="headings",
             selectmode="browse",
         )
         self.tree.heading("reg", text="N° Registre")
+        self.tree.heading("sep", text="")
         self.tree.heading("val", text="Valeur")
-        self.tree.column("reg", width=130, anchor=CENTER)
-        self.tree.column("val", width=200, anchor=W)
+        self.tree.column("reg",  width=130, anchor=CENTER)
+        self.tree.column("sep",  width=2, minwidth=2, stretch=False)
+        self.tree.column("val",  width=200, anchor=W)
+
+        # Quadrillage : alternance de couleurs par ligne
+        self.tree.tag_configure("oddrow",  background="#2b3035")
+        self.tree.tag_configure("evenrow", background="#1e2124")
 
         vsb = ttk.Scrollbar(table_frame, orient=VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -454,24 +460,30 @@ class TabModbus(ttk.Frame):
 
         # Mode spécial : décomposer chaque registre en 16 bits individuels
         if display_mode == "bits":
+            row_idx = 0
             for i, raw_val in enumerate(values):
                 reg_addr = base_address + i
                 v = int(raw_val)
                 for bit in range(16):
                     bit_val = (v >> bit) & 1
-                    self.tree.insert("", END, values=(f"{reg_addr}.{bit:02d}", str(bit_val)))
+                    tag = "oddrow" if row_idx % 2 else "evenrow"
+                    self.tree.insert("", END, values=(f"{reg_addr}.{bit:02d}", "", str(bit_val)), tags=(tag,))
+                    row_idx += 1
             return
 
         step = 2 if display_mode in ("float32", "uint32", "int32") else 1
         i = 0
+        row_idx = 0
         while i < len(values):
             reg_addr = base_address + i
             raw = values[i:i + step] if step == 2 else values[i]
             formatted = format_register_value(
                 raw, display_mode, num_base, swap_bytes, swap_words, unsigned
             )
-            self.tree.insert("", END, values=(reg_addr, formatted))
+            tag = "oddrow" if row_idx % 2 else "evenrow"
+            self.tree.insert("", END, values=(reg_addr, "", formatted), tags=(tag,))
             i += step
+            row_idx += 1
 
     def _refresh_display(self, *_):
         """Recalcule l affichage depuis le cache sans nouvelle requete Modbus."""
