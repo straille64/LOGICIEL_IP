@@ -111,8 +111,14 @@ class RegisterDetailDialog(tk.Toplevel):
         self.swap_bytes_var  = tk.BooleanVar(value=False)
         self.swap_words_var  = tk.BooleanVar(value=False)
 
-        self._cell_vars: dict = {}
-        self._bit_vars: list = []
+        self._updating: bool = False
+
+        self._bin_vars: list  = []
+        self._oct_vars: list  = []
+        self._mot16_vars: list = []
+        self._mot32_var: tk.StringVar = tk.StringVar()
+        self._reel32_var: tk.StringVar = tk.StringVar()
+        self._bit_vars: list  = []
 
         self._build()
         self._refresh()
@@ -136,52 +142,90 @@ class RegisterDetailDialog(tk.Toplevel):
         self._build_buttons(outer)
 
     def _build_bits(self, parent):
+        """Deux rangées de 16 checkboxes cliquables représentant les bits."""
         frame = ttk.LabelFrame(parent, text=f"Bits — N° Registre : {self._address}")
         frame.pack(fill=X)
+
         self._bit_vars = [tk.BooleanVar(value=False) for _ in range(32)]
+
         for row_idx, (start, end) in enumerate([(15, -1), (31, 15)]):
             num_row = ttk.Frame(frame)
             num_row.pack()
             bit_row = ttk.Frame(frame)
             bit_row.pack()
             for col, bit in enumerate(range(start, end, -1)):
-                ttk.Label(num_row, text=str(bit), width=3, anchor=CENTER).grid(row=0, column=col)
-                cb = ttk.Checkbutton(bit_row, variable=self._bit_vars[bit], state=DISABLED)
+                ttk.Label(num_row, text=str(bit), width=3, anchor=CENTER).grid(
+                    row=0, column=col)
+                cb = ttk.Checkbutton(
+                    bit_row,
+                    variable=self._bit_vars[bit],
+                    command=lambda b=bit: self._on_bit_click(b),
+                )
                 cb.grid(row=0, column=col)
 
     def _build_grid(self, parent):
+        """Grille : 4 colonnes Octet × 5 types (sans ASCII) + Options."""
         container = ttk.Frame(parent)
         container.pack(fill=X)
+
         table = ttk.Frame(container)
         table.grid(row=0, column=0, sticky=W)
+
         headers = ["", "Octet 3", "Octet 2", "Octet 1", "Octet 0"]
         for c, h in enumerate(headers):
-            ttk.Label(table, text=h, width=10, anchor=CENTER, bootstyle=PRIMARY).grid(row=0, column=c, padx=1, pady=1)
-        row_names = ["Binaire", "Ascii", "Octet", "Mot 16", "Mot 32", "Réel 32"]
+            ttk.Label(table, text=h, width=10, anchor=CENTER,
+                      bootstyle=PRIMARY).grid(row=0, column=c, padx=1, pady=1)
+
+        row_names = ["Binaire", "Octet", "Mot 16", "Mot 32", "Réel 32"]
         for r, name in enumerate(row_names, start=1):
-            ttk.Label(table, text=name, width=10, anchor=W, bootstyle=SECONDARY).grid(row=r, column=0, padx=1, pady=1)
-        for key in ("binaire", "ascii", "octet"):
-            self._cell_vars[key] = [tk.StringVar(value="") for _ in range(4)]
-        row_map = {"binaire": 1, "ascii": 2, "octet": 3}
-        for key, row_idx in row_map.items():
-            for c, sv in enumerate(self._cell_vars[key], start=1):
-                ttk.Label(table, textvariable=sv, width=10, anchor=CENTER, relief="groove").grid(row=row_idx, column=c, padx=1, pady=1)
-        self._mot16_vars = [tk.StringVar(value=""), tk.StringVar(value="")]
-        ttk.Label(table, textvariable=self._mot16_vars[0], width=21, anchor=CENTER, relief="groove").grid(row=4, column=1, columnspan=2, padx=1, pady=1)
-        ttk.Label(table, textvariable=self._mot16_vars[1], width=21, anchor=CENTER, relief="groove").grid(row=4, column=3, columnspan=2, padx=1, pady=1)
-        self._mot32_var = tk.StringVar(value="")
-        ttk.Label(table, textvariable=self._mot32_var, width=43, anchor=CENTER, relief="groove").grid(row=5, column=1, columnspan=4, padx=1, pady=1)
-        self._reel32_var = tk.StringVar(value="")
-        ttk.Label(table, textvariable=self._reel32_var, width=43, anchor=CENTER, relief="groove").grid(row=6, column=1, columnspan=4, padx=1, pady=1)
+            ttk.Label(table, text=name, width=10, anchor=W,
+                      bootstyle=SECONDARY).grid(row=r, column=0, padx=1, pady=1)
+
+        # Binaire row (row 1) — 4 Entry 8 chars
+        self._bin_vars = [tk.StringVar() for _ in range(4)]
+        for c, sv in enumerate(self._bin_vars):
+            ttk.Entry(table, textvariable=sv, width=10,
+                      justify=CENTER).grid(row=1, column=c + 1, padx=1, pady=1)
+            sv.trace_add("write", lambda *_, i=c: self._on_change(f"bin{i}"))
+
+        # Octet row (row 2) — 4 Entry
+        self._oct_vars = [tk.StringVar() for _ in range(4)]
+        for c, sv in enumerate(self._oct_vars):
+            ttk.Entry(table, textvariable=sv, width=10,
+                      justify=CENTER).grid(row=2, column=c + 1, padx=1, pady=1)
+            sv.trace_add("write", lambda *_, i=c: self._on_change(f"oct{i}"))
+
+        # Mot 16 row (row 3) — 2 Entry colspan 2
+        self._mot16_vars = [tk.StringVar(), tk.StringVar()]
+        for c, sv in enumerate(self._mot16_vars):
+            ttk.Entry(table, textvariable=sv, width=21,
+                      justify=CENTER).grid(row=3, column=1 + c * 2, columnspan=2,
+                                           padx=1, pady=1)
+            sv.trace_add("write", lambda *_, i=c: self._on_change(f"mot16_{i}"))
+
+        # Mot 32 row (row 4) — 1 Entry colspan 4
+        self._mot32_var = tk.StringVar()
+        ttk.Entry(table, textvariable=self._mot32_var, width=43,
+                  justify=CENTER).grid(row=4, column=1, columnspan=4, padx=1, pady=1)
+        self._mot32_var.trace_add("write", lambda *_: self._on_change("mot32"))
+
+        # Réel 32 row (row 5) — 1 Entry colspan 4
+        self._reel32_var = tk.StringVar()
+        ttk.Entry(table, textvariable=self._reel32_var, width=43,
+                  justify=CENTER).grid(row=5, column=1, columnspan=4, padx=1, pady=1)
+        self._reel32_var.trace_add("write", lambda *_: self._on_change("reel32"))
+
+        # Options
         opts = ttk.LabelFrame(container, text="Options", padding=8)
-        opts.grid(row=0, column=1, sticky=N+W, padx=(12, 0))
+        opts.grid(row=0, column=1, sticky=N + W, padx=(12, 0))
         for text, var in [
-            ("Hexa",         self.hexa_var),
-            ("Non signé",    self.unsigned_var),
-            ("Inv. Octets",  self.swap_bytes_var),
-            ("Inv. Mots",    self.swap_words_var),
+            ("Hexa",        self.hexa_var),
+            ("Non signé",   self.unsigned_var),
+            ("Inv. Octets", self.swap_bytes_var),
+            ("Inv. Mots",   self.swap_words_var),
         ]:
-            ttk.Checkbutton(opts, text=text, variable=var, command=self._refresh).pack(anchor=W, pady=2)
+            ttk.Checkbutton(opts, text=text, variable=var,
+                            command=self._refresh).pack(anchor=W, pady=2)
 
     def _build_buttons(self, parent):
         btn_frame = ttk.Frame(parent)
@@ -190,36 +234,41 @@ class RegisterDetailDialog(tk.Toplevel):
         ttk.Button(btn_frame, text="Annuler", bootstyle=SECONDARY, command=self.destroy, width=18).pack(side=RIGHT, padx=6)
 
     def _refresh(self):
-        sw = self.swap_words_var.get()
-        sb = self.swap_bytes_var.get()
-        hexa = self.hexa_var.get()
+        """Recalcule toutes les cellules depuis _w0/_w1 et les options courantes."""
+        sw       = self.swap_words_var.get()
+        sb       = self.swap_bytes_var.get()
+        hexa     = self.hexa_var.get()
         unsigned = self.unsigned_var.get()
+
         b3, b2, b1, b0 = decode_registers(self._w0, self._w1, sw, sb)
         bytes_list = [b3, b2, b1, b0]
+
         for i in range(16):
             self._bit_vars[i].set(bool((self._w0 >> i) & 1))
         for i in range(16):
             self._bit_vars[16 + i].set(bool((self._w1 >> i) & 1))
-        for i, sv in enumerate(self._cell_vars["binaire"]):
+
+        for i, sv in enumerate(self._bin_vars):
             sv.set(fmt_bin_byte(bytes_list[i]))
-        for i, sv in enumerate(self._cell_vars["ascii"]):
-            sv.set(fmt_ascii_byte(bytes_list[i]))
+
         def _fmt_int(v: int) -> str:
             return f"0x{v:02X}" if hexa else str(v)
-        for i, sv in enumerate(self._cell_vars["octet"]):
+
+        for i, sv in enumerate(self._oct_vars):
             sv.set(_fmt_int(bytes_list[i]))
-        if sw:
-            word_hi, word_lo = self._w1, self._w0
-        else:
-            word_hi, word_lo = self._w0, self._w1
+
+        word_hi, word_lo = (self._w1, self._w0) if sw else (self._w0, self._w1)
+
         def _fmt_word16(w: int) -> str:
             if hexa:
                 return f"0x{w & 0xFFFF:04X}"
             if not unsigned and (w & 0x8000):
                 return str((w & 0xFFFF) - 0x10000)
             return str(w & 0xFFFF)
+
         self._mot16_vars[0].set(_fmt_word16(word_hi))
         self._mot16_vars[1].set(_fmt_word16(word_lo))
+
         combined = ((word_hi & 0xFFFF) << 16) | (word_lo & 0xFFFF)
         if hexa:
             self._mot32_var.set(f"0x{combined:08X}")
@@ -227,4 +276,5 @@ class RegisterDetailDialog(tk.Toplevel):
             self._mot32_var.set(str(combined - 0x100000000))
         else:
             self._mot32_var.set(str(combined))
+
         self._reel32_var.set(fmt_reel32(word_hi, word_lo))
