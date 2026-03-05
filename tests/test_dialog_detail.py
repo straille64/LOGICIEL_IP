@@ -51,3 +51,45 @@ def test_fmt_reel32_nan():
     # Valeur qui génère NaN → retourne quelque chose contenant "N"
     result = fmt_reel32(0x7FC0, 0x0000)
     assert "N" in result.upper()
+
+
+from modules.dialog_register_detail import (
+    parse_bin_byte, parse_octet, parse_mot16, parse_mot32, parse_reel32_to_words
+)
+
+def test_parse_bin_byte_valid():
+    assert parse_bin_byte("10110010") == 178
+
+def test_parse_bin_byte_zero():
+    assert parse_bin_byte("00000000") == 0
+
+def test_parse_bin_byte_invalid():
+    with pytest.raises(ValueError):
+        parse_bin_byte("xyz")
+
+def test_parse_octet_decimal():
+    assert parse_octet("255") == 255
+
+def test_parse_octet_hex():
+    assert parse_octet("0xFF") == 255
+
+def test_parse_octet_out_of_range():
+    with pytest.raises(ValueError):
+        parse_octet("300")
+
+def test_parse_mot16():
+    assert parse_mot16("0x1234") == 0x1234
+
+def test_parse_mot16_negative_raises():
+    with pytest.raises(ValueError):
+        parse_mot16("-1")
+
+def test_parse_mot32_split():
+    val = parse_mot32("0x12345678")
+    assert (val >> 16) == 0x1234
+    assert (val & 0xFFFF) == 0x5678
+
+def test_parse_reel32_to_words():
+    w0, w1 = parse_reel32_to_words("1.0")
+    assert w0 == 0x3F80
+    assert w1 == 0x0000

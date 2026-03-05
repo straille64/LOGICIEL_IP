@@ -50,6 +50,49 @@ def fmt_reel32(w0: int, w1: int) -> str:
         return "NaN"
 
 
+
+
+def parse_bin_byte(text: str) -> int:
+    """Parse une chaîne binaire 8 bits → int (0-255). Lève ValueError si invalide."""
+    val = int(text, 2)
+    if not (0 <= val <= 255):
+        raise ValueError(f"Hors plage: {val}")
+    return val
+
+
+def parse_octet(text: str) -> int:
+    """Parse un texte décimal ou hex (0x..) → int (0-255). Lève ValueError si invalide."""
+    val = int(text, 0)
+    if not (0 <= val <= 255):
+        raise ValueError(f"Hors plage: {val}")
+    return val
+
+
+def parse_mot16(text: str) -> int:
+    """Parse décimal ou hex → int (0-65535). Lève ValueError si hors plage."""
+    val = int(text, 0)
+    if not (0 <= val <= 65535):
+        raise ValueError(f"Hors plage: {val}")
+    return val
+
+
+def parse_mot32(text: str) -> int:
+    """Parse décimal ou hex → int (0-4294967295). Lève ValueError si hors plage."""
+    val = int(text, 0)
+    if not (0 <= val <= 0xFFFFFFFF):
+        raise ValueError(f"Hors plage: {val}")
+    return val
+
+
+def parse_reel32_to_words(text: str) -> tuple:
+    """Parse un float → (word_hi, word_lo) IEEE 754 big-endian. Lève ValueError si invalide."""
+    val = float(text)
+    raw = struct.pack(">f", val)
+    w_hi = (raw[0] << 8) | raw[1]
+    w_lo = (raw[2] << 8) | raw[3]
+    return w_hi, w_lo
+
+
 # ─── Dialogue ─────────────────────────────────────────────────────────────────
 
 class RegisterDetailDialog(tk.Toplevel):
