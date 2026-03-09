@@ -203,7 +203,39 @@ class TabBACnet(ttk.Frame):
         n = len(devices)
         self._set_status(f"Connecté — {n} device(s) trouvé(s)")
 
-    def _on_device_expand(self, e): pass
+    def _on_device_expand(self, event):
+        node_id = self._tree.focus()
+        if not node_id.startswith("dev_"):
+            return
+        children = self._tree.get_children(node_id)
+        # Si le seul enfant est le nœud fantôme "loading_", lancer la requête
+        if len(children) == 1 and str(children[0]).startswith("loading_"):
+            dev_id = int(node_id.split("_")[1])
+            address = self._tree.item(node_id, "values")[0]
+            from core.bacnet import DeviceInfo
+            device = DeviceInfo(dev_id, address, "", "")
+            self._load_objects(node_id, device)
+
+    def _load_objects(self, node_id: str, device):
+        def _worker():
+            try:
+                objects = self.client.get_object_list(device)
+                self.after(0, lambda: self._add_object_nodes(node_id, objects))
+            except Exception as exc:
+                self.after(0, lambda e=exc: self._set_status(f"Objets : {e}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _add_object_nodes(self, node_id: str, objects):
+        # Supprimer le nœud fantôme
+        for child in self._tree.get_children(node_id):
+            self._tree.delete(child)
+        for obj in objects:
+            label = f"{obj.object_type}:{obj.instance}  —  {obj.name}"
+            iid = f"obj_{node_id}_{obj.object_type}_{obj.instance}"
+            self._tree.insert(node_id, END, iid=iid, text=label,
+                              values=[obj.object_type, obj.instance, obj.name])
+
     def _on_object_select(self, e): pass
     def _btn_details(self):       pass
     def _btn_write(self):         pass
