@@ -309,7 +309,28 @@ class TabBACnet(ttk.Frame):
                         self._set_status(f"Polling : {e}"))
             self._stop_event.wait(self._cyclic_interval)
 
-    def _btn_details(self):       pass
+    def _btn_details(self):
+        if not hasattr(self, "_selected_device"):
+            Messagebox.show_warning("Sélectionnez d'abord un objet.", "Détails")
+            return
+        self._set_status("Lecture des propriétés complètes…")
+
+        def _worker():
+            try:
+                props = self.client.read_all_properties(
+                    self._selected_device, self._selected_object
+                )
+                self.after(0, lambda: self._open_details_dialog(props))
+            except Exception as exc:
+                self.after(0, lambda e=exc: Messagebox.show_error(str(e), "Détails"))
+                self.after(0, lambda: self._set_status("Prêt"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _open_details_dialog(self, props: dict):
+        from modules.dialog_bacnet_obj import BACnetObjectDialog
+        BACnetObjectDialog(self, self._selected_object.name, props)
+        self._set_status("Prêt")
 
     def _btn_write(self):
         if not hasattr(self, "_selected_object"):
