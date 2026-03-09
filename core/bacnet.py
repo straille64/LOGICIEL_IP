@@ -132,3 +132,37 @@ class BACnetClient:
             raise
         except Exception as exc:
             raise BACnetTimeoutError(str(exc)) from exc
+
+    def get_object_list(self, device: DeviceInfo) -> list[ObjectRef]:
+        """Retourne la liste des objets d'un device via lecture de objectList.
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetTimeoutError: En cas de timeout ou d'erreur réseau.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        try:
+            obj_list = self._app.read(
+                f"{device.address} device {device.device_id} objectList"
+            )
+            objects: list[ObjectRef] = []
+            for item in obj_list:
+                obj_type = str(item[0])
+                instance = int(item[1])
+                try:
+                    name = self._app.read(
+                        f"{device.address} {obj_type} {instance} objectName"
+                    ) or f"{obj_type}:{instance}"
+                except Exception:
+                    name = f"{obj_type}:{instance}"
+                objects.append(ObjectRef(
+                    object_type=obj_type,
+                    instance=instance,
+                    name=name,
+                ))
+            return objects
+        except BACnetConnectionError:
+            raise
+        except Exception as exc:
+            raise BACnetTimeoutError(str(exc)) from exc

@@ -100,3 +100,38 @@ def test_who_is_not_connected_raises():
     client = BACnetClient()
     with pytest.raises(BACnetConnectionError):
         client.who_is()
+
+
+def test_get_object_list():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+
+        def fake_read(query):
+            if "objectList" in query:
+                return [("analogInput", 1), ("binaryOutput", 1)]
+            if "analogInput" in query and "objectName" in query:
+                return "Température"
+            if "binaryOutput" in query and "objectName" in query:
+                return "Pompe"
+            return ""
+        mock_app.read.side_effect = fake_read
+
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "Siemens", "CTR-101")
+        objects = client.get_object_list(device)
+
+        assert len(objects) == 2
+        assert objects[0].object_type == "analogInput"
+        assert objects[0].instance == 1
+        assert objects[0].name == "Température"
+        assert objects[1].object_type == "binaryOutput"
+        assert objects[1].name == "Pompe"
+
+
+def test_get_object_list_not_connected_raises():
+    client = BACnetClient()
+    device = DeviceInfo(101, "192.168.1.10", "", "")
+    with pytest.raises(BACnetConnectionError):
+        client.get_object_list(device)
