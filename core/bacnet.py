@@ -190,6 +190,56 @@ class BACnetClient:
         except Exception as exc:
             raise BACnetTimeoutError(str(exc)) from exc
 
+    def write_present_value(self, device: DeviceInfo, obj: ObjectRef,
+                            value: Any, priority: int = 8) -> None:
+        """Écrit presentValue avec la priorité donnée (1-16, défaut 8).
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetWriteError: Si l'objet refuse l'écriture.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        cmd = (f"{device.address} {obj.object_type} {obj.instance} "
+               f"presentValue {value} - {priority}")
+        try:
+            self._app.write(cmd)
+        except Exception as exc:
+            raise BACnetWriteError(str(exc)) from exc
+
+    def subscribe_cov(self, device: DeviceInfo, obj: ObjectRef,
+                      callback: Callable[[Any], None]) -> int:
+        """Souscrit aux changements de valeur (COV).
+
+        Returns:
+            subscription_id à passer à unsubscribe_cov().
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetTimeoutError: Si COV non supporté ou timeout.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        try:
+            sub_id = self._app.subscribe_cov(
+                f"{device.address} {obj.object_type} {obj.instance}",
+                callback=callback,
+            )
+            return int(sub_id) if sub_id is not None else id(callback)
+        except Exception as exc:
+            raise BACnetTimeoutError(
+                f"COV non supporté par cet objet : {exc}"
+            ) from exc
+
+    def unsubscribe_cov(self, subscription_id: int) -> None:
+        """Annule une souscription COV. Silencieux si non connecté."""
+        if not self.is_connected:
+            return
+        try:
+            self._app.unsubscribe_cov(subscription_id)
+        except Exception:
+            pass
+
     def get_object_list(self, device: DeviceInfo) -> list[ObjectRef]:
         """Retourne la liste des objets d'un device via lecture de objectList.
 

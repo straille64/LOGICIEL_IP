@@ -181,3 +181,49 @@ def test_read_all_properties():
         props = client.read_all_properties(device, obj)
         assert props["presentValue"] == 21.5
         assert props["objectName"] == "Température"
+
+
+def test_write_present_value():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "", "")
+        obj = ObjectRef("analogValue", 1, "Consigne")
+        client.write_present_value(device, obj, 22.5, priority=8)
+        mock_app.write.assert_called_once_with(
+            "192.168.1.10 analogValue 1 presentValue 22.5 - 8"
+        )
+
+
+def test_write_present_value_raises_on_error():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        mock_app.write.side_effect = Exception("WriteAccessDenied")
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "", "")
+        obj = ObjectRef("analogInput", 1, "Temp")
+        with pytest.raises(BACnetWriteError):
+            client.write_present_value(device, obj, 21.0)
+
+
+def test_subscribe_cov_returns_id():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        mock_app.subscribe_cov.return_value = 42
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "", "")
+        obj = ObjectRef("analogInput", 1, "Temp")
+        sub_id = client.subscribe_cov(device, obj, callback=lambda v: None)
+        assert isinstance(sub_id, int)
+
+
+def test_unsubscribe_cov_not_connected_is_silent():
+    client = BACnetClient()
+    # Ne doit pas lever d'exception
+    client.unsubscribe_cov(42)
