@@ -236,8 +236,79 @@ class TabBACnet(ttk.Frame):
             self._tree.insert(node_id, END, iid=iid, text=label,
                               values=[obj.object_type, obj.instance, obj.name])
 
-    def _on_object_select(self, e): pass
+    def _on_object_select(self, event):
+        sel = self._tree.selection()
+        if not sel:
+            return
+        node_id = sel[0]
+        if not node_id.startswith("obj_"):
+            return
+        values = self._tree.item(node_id, "values")
+        if not values or len(values) < 3:
+            return
+        obj_type = str(values[0])
+        instance = int(values[1])
+        name = str(values[2])
+        # Remonter au device parent
+        parent_id = self._tree.parent(node_id)
+        parent_values = self._tree.item(parent_id, "values")
+        if not parent_values:
+            return
+        address = str(parent_values[0])
+        dev_id = int(parent_values[1])
+
+        from core.bacnet import DeviceInfo, ObjectRef
+        self._selected_device = DeviceInfo(dev_id, address, "", "")
+        self._selected_object = ObjectRef(obj_type, instance, name)
+        self._refresh_detail()
+
+    def _refresh_detail(self):
+        if not hasattr(self, "_selected_device"):
+            return
+
+        def _worker():
+            try:
+                value, unit, reliability = self.client.read_present_value(
+                    self._selected_device, self._selected_object
+                )
+                self.after(0, lambda v=value, u=unit, r=reliability:
+                    self._update_detail_row(self._selected_object, v, u, r))
+            except Exception as exc:
+                self.after(0, lambda e=exc: self._set_status(f"Lecture : {e}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _update_detail_row(self, obj, value, unit, reliability):
+        self._detail_tree.delete(*self._detail_tree.get_children())
+        self._detail_tree.insert("", END, values=(
+            obj.name, obj.object_type, str(value), reliability, unit
+        ))
+
+    def _on_poll_toggle(self):
+        if self._var_poll.get():
+            self._stop_event.clear()
+            self._poll_thread = threading.Thread(
+                target=self._poll_loop, daemon=True
+            )
+            self._poll_thread.start()
+        else:
+            self._stop_event.set()
+
+    def _poll_loop(self):
+        import time
+        while not self._stop_event.is_set():
+            if hasattr(self, "_selected_device") and self.client.is_connected:
+                try:
+                    value, unit, reliability = self.client.read_present_value(
+                        self._selected_device, self._selected_object
+                    )
+                    self.after(0, lambda v=value, u=unit, r=reliability:
+                        self._update_detail_row(self._selected_object, v, u, r))
+                except Exception as exc:
+                    self.after(0, lambda e=exc:
+                        self._set_status(f"Polling : {e}"))
+            self._stop_event.wait(self._cyclic_interval)
+
     def _btn_details(self):       pass
     def _btn_write(self):         pass
     def _on_cov_toggle(self):     pass
-    def _on_poll_toggle(self):    pass
