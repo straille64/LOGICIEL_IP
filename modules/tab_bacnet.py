@@ -143,9 +143,66 @@ class TabBACnet(ttk.Frame):
     # CALLBACKS — stubs (implémentés dans les tâches suivantes)
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _btn_connect(self):       pass
-    def _btn_disconnect(self):    pass
-    def _btn_whois(self):         pass
+    def _btn_connect(self):
+        local_ip  = self._var_ip.get().strip()
+        bbmd_addr = self._var_bbmd.get().strip() or None
+        try:
+            ttl = int(self._var_ttl.get())
+        except ValueError:
+            ttl = 900
+        self._set_status("Connexion en cours…")
+
+        def _worker():
+            try:
+                self.client.connect(local_ip, bbmd_address=bbmd_addr, bbmd_ttl=ttl)
+                self.after(0, lambda: self._set_status("Connecté — prêt"))
+            except Exception as exc:
+                self.after(0, lambda e=exc: self._set_status(f"Erreur : {e}"))
+                self.after(0, lambda e=exc: Messagebox.show_error(str(e), "Connexion BACnet"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _btn_disconnect(self):
+        self._stop_event.set()
+        for sub_id in list(self._cov_subs.values()):
+            try:
+                self.client.unsubscribe_cov(sub_id)
+            except Exception:
+                pass
+        self._cov_subs.clear()
+        self.client.disconnect()
+        self._tree.delete(*self._tree.get_children())
+        self._detail_tree.delete(*self._detail_tree.get_children())
+        self._set_status("Déconnecté")
+
+    def _btn_whois(self):
+        if not self.client.is_connected:
+            Messagebox.show_warning("Connectez-vous d'abord.", "Who-Is")
+            return
+        self._set_status("Scan Who-Is en cours…")
+        self._tree.delete(*self._tree.get_children())
+
+        def _worker():
+            try:
+                devices = self.client.who_is()
+                self.after(0, lambda: self._populate_tree(devices))
+            except Exception as exc:
+                self.after(0, lambda e=exc: self._set_status(f"Who-Is échoué : {e}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _populate_tree(self, devices):
+        for dev in devices:
+            label = f"Device {dev.device_id}  —  {dev.object_name}  [{dev.address}]"
+            node = self._tree.insert("", END, iid=f"dev_{dev.device_id}",
+                                     text=label, open=False,
+                                     values=[dev.address, dev.device_id])
+            # Nœud fantôme pour activer le triangle d'expansion
+            self._tree.insert(node, END, iid=f"loading_{dev.device_id}",
+                              text="Chargement…")
+        n = len(devices)
+        self._set_status(f"Connecté — {n} device(s) trouvé(s)")
+
     def _on_device_expand(self, e): pass
     def _on_object_select(self, e): pass
     def _btn_details(self):       pass
