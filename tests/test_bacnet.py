@@ -135,3 +135,49 @@ def test_get_object_list_not_connected_raises():
     device = DeviceInfo(101, "192.168.1.10", "", "")
     with pytest.raises(BACnetConnectionError):
         client.get_object_list(device)
+
+
+def test_read_present_value():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        def fake_read(query):
+            if "presentValue" in query:   return 21.5
+            if "units" in query:          return "degreesCelsius"
+            if "reliability" in query:    return "noFaultDetected"
+            return None
+        mock_app.read.side_effect = fake_read
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "", "")
+        obj = ObjectRef("analogInput", 1, "Temp")
+        value, unit, reliability = client.read_present_value(device, obj)
+        assert value == 21.5
+        assert unit == "degreesCelsius"
+        assert reliability == "noFaultDetected"
+
+
+def test_read_present_value_not_connected_raises():
+    client = BACnetClient()
+    device = DeviceInfo(101, "192.168.1.10", "", "")
+    obj = ObjectRef("analogInput", 1, "Temp")
+    with pytest.raises(BACnetConnectionError):
+        client.read_present_value(device, obj)
+
+
+def test_read_all_properties():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        mock_app.readMultiple.return_value = {
+            "presentValue": 21.5,
+            "objectName": "Température",
+            "units": "degreesCelsius",
+        }
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        device = DeviceInfo(101, "192.168.1.10", "", "")
+        obj = ObjectRef("analogInput", 1, "Temp")
+        props = client.read_all_properties(device, obj)
+        assert props["presentValue"] == 21.5
+        assert props["objectName"] == "Température"

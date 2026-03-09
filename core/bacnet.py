@@ -133,6 +133,63 @@ class BACnetClient:
         except Exception as exc:
             raise BACnetTimeoutError(str(exc)) from exc
 
+    def read_present_value(self, device: DeviceInfo,
+                           obj: ObjectRef) -> tuple[Any, str, str]:
+        """Lit presentValue, units et reliability d'un objet.
+
+        Returns:
+            Tuple (valeur, unité, reliability).
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetTimeoutError: En cas d'erreur réseau.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        addr = device.address
+        ot, inst = obj.object_type, obj.instance
+        try:
+            value = self._app.read(f"{addr} {ot} {inst} presentValue")
+            try:
+                unit = str(self._app.read(f"{addr} {ot} {inst} units") or "")
+            except Exception:
+                unit = ""
+            try:
+                reliability = str(
+                    self._app.read(f"{addr} {ot} {inst} reliability") or ""
+                )
+            except Exception:
+                reliability = ""
+            return value, unit, reliability
+        except BACnetConnectionError:
+            raise
+        except Exception as exc:
+            raise BACnetTimeoutError(str(exc)) from exc
+
+    def read_all_properties(self, device: DeviceInfo,
+                            obj: ObjectRef) -> dict[str, Any]:
+        """Lit toutes les propriétés d'un objet via ReadPropertyMultiple.
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetTimeoutError: En cas d'erreur réseau.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        try:
+            result = self._app.readMultiple(
+                f"{device.address} {obj.object_type} {obj.instance} all"
+            )
+            if isinstance(result, dict):
+                return result
+            # Certaines versions de BAC0 retournent un objet avec attributs
+            return {k: getattr(result, k, None) for k in dir(result)
+                    if not k.startswith("_")}
+        except BACnetConnectionError:
+            raise
+        except Exception as exc:
+            raise BACnetTimeoutError(str(exc)) from exc
+
     def get_object_list(self, device: DeviceInfo) -> list[ObjectRef]:
         """Retourne la liste des objets d'un device via lecture de objectList.
 
