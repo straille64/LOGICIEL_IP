@@ -65,3 +65,38 @@ def test_connect_port_busy_raises():
         client = BACnetClient()
         with pytest.raises(BACnetConnectionError, match="47808"):
             client.connect(local_ip="192.168.1.100/24")
+
+
+def test_who_is_returns_device_list():
+    with patch("core.bacnet.BAC0") as mock_bac0:
+        mock_app = MagicMock()
+        mock_bac0.connect.return_value = mock_app
+        mock_app.whois.return_value = None
+        # BAC0.devices : liste de tuples (device_id_str, address_str)
+        mock_app.devices = [
+            ("101", "192.168.1.10"),
+            ("205", "192.168.1.20"),
+        ]
+        def fake_read(query):
+            if "objectName" in query:
+                return "CTR-101" if "192.168.1.10" in query else "CTR-205"
+            if "vendorName" in query:
+                return "Siemens"
+            return ""
+        mock_app.read.side_effect = fake_read
+
+        client = BACnetClient()
+        client.connect("192.168.1.100/24")
+        devices = client.who_is(timeout=0.01)  # timeout court pour le test
+
+        assert len(devices) == 2
+        assert devices[0].device_id == 101
+        assert devices[0].address == "192.168.1.10"
+        assert devices[0].object_name == "CTR-101"
+        assert devices[1].device_id == 205
+
+
+def test_who_is_not_connected_raises():
+    client = BACnetClient()
+    with pytest.raises(BACnetConnectionError):
+        client.who_is()

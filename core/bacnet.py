@@ -85,3 +85,50 @@ class BACnetClient:
     @property
     def is_connected(self) -> bool:
         return self._app is not None
+
+    def who_is(self, timeout: float = 3.0) -> list[DeviceInfo]:
+        """Lance un Who-Is broadcast et retourne les devices répondants.
+
+        Args:
+            timeout: Durée d'attente des réponses I-Am en secondes.
+
+        Returns:
+            Liste de DeviceInfo pour chaque device ayant répondu.
+
+        Raises:
+            BACnetConnectionError: Si non connecté.
+            BACnetTimeoutError: En cas d'erreur réseau.
+        """
+        if not self.is_connected:
+            raise BACnetConnectionError("Non connecté")
+        import time
+        try:
+            self._app.whois()
+            time.sleep(timeout)
+            devices: list[DeviceInfo] = []
+            for entry in self._app.devices:
+                dev_id = int(entry[0])
+                address = str(entry[1])
+                try:
+                    obj_name = self._app.read(
+                        f"{address} device {dev_id} objectName"
+                    ) or ""
+                except Exception:
+                    obj_name = ""
+                try:
+                    vendor = self._app.read(
+                        f"{address} device {dev_id} vendorName"
+                    ) or ""
+                except Exception:
+                    vendor = ""
+                devices.append(DeviceInfo(
+                    device_id=dev_id,
+                    address=address,
+                    vendor_name=vendor,
+                    object_name=obj_name,
+                ))
+            return devices
+        except BACnetConnectionError:
+            raise
+        except Exception as exc:
+            raise BACnetTimeoutError(str(exc)) from exc
