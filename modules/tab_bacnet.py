@@ -310,5 +310,72 @@ class TabBACnet(ttk.Frame):
             self._stop_event.wait(self._cyclic_interval)
 
     def _btn_details(self):       pass
-    def _btn_write(self):         pass
-    def _on_cov_toggle(self):     pass
+
+    def _btn_write(self):
+        if not hasattr(self, "_selected_object"):
+            Messagebox.show_warning("Sélectionnez d'abord un objet.", "Écriture")
+            return
+        from ttkbootstrap.dialogs import Querybox
+        val_str = Querybox.get_string(
+            prompt=f"Nouvelle valeur pour {self._selected_object.name} :",
+            title="Écrire valeur",
+        )
+        if val_str is None:
+            return
+        prio_str = Querybox.get_string(
+            prompt="Priorité BACnet (1-16, défaut 8) :",
+            title="Priorité",
+            initialvalue="8",
+        )
+        try:
+            priority = int(prio_str or "8")
+            priority = max(1, min(16, priority))
+        except (ValueError, TypeError):
+            priority = 8
+        try:
+            try:
+                value = float(val_str)
+            except ValueError:
+                value = val_str
+            self.client.write_present_value(
+                self._selected_device, self._selected_object, value, priority
+            )
+            self._set_status(f"Écriture réussie : {value} (priorité {priority})")
+            self._refresh_detail()
+        except Exception as exc:
+            Messagebox.show_error(str(exc), "Erreur d'écriture")
+
+    def _on_cov_toggle(self):
+        if not hasattr(self, "_selected_object"):
+            self._var_cov.set(False)
+            return
+        key = f"{self._selected_object.object_type}:{self._selected_object.instance}"
+        if self._var_cov.get():
+            def _cov_callback(new_value):
+                self.after(0, lambda v=new_value:
+                    self._update_detail_row(self._selected_object, v, "", ""))
+
+            def _subscribe():
+                try:
+                    sub_id = self.client.subscribe_cov(
+                        self._selected_device, self._selected_object, _cov_callback
+                    )
+                    self._cov_subs[key] = sub_id
+                    self.after(0, lambda: self._set_status(f"COV actif : {key}"))
+                except Exception as exc:
+                    # Bascule silencieuse en polling si COV non supporté
+                    self.after(0, lambda: self._var_cov.set(False))
+                    self.after(0, lambda: self._var_poll.set(True))
+                    self.after(0, self._on_poll_toggle)
+                    self.after(0, lambda e=exc: self._set_status(
+                        f"COV non supporté, polling activé ({e})"
+                    ))
+
+            threading.Thread(target=_subscribe, daemon=True).start()
+        else:
+            if key in self._cov_subs:
+                try:
+                    self.client.unsubscribe_cov(self._cov_subs.pop(key))
+                except Exception:
+                    pass
+            self._set_status("COV désactivé")
