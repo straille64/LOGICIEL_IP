@@ -105,6 +105,8 @@ class BACnetClient:
         try:
             self._app.whois()
             time.sleep(timeout)
+            if self._app is None:
+                return []
             devices: list[DeviceInfo] = []
             for entry in self._app.devices:
                 dev_id = int(entry[0])

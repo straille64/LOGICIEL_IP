@@ -15,6 +15,7 @@ class TabBACnet(ttk.Frame):
         super().__init__(master, **kwargs)
         self.client = BACnetClient()
         self._stop_event = threading.Event()
+        self._poll_stop = threading.Event()
         self._poll_thread = None
         self._cyclic_interval = 1.0
         self._cov_subs: dict[str, int] = {}  # "type:inst" → subscription_id
@@ -164,6 +165,7 @@ class TabBACnet(ttk.Frame):
 
     def _btn_disconnect(self):
         self._stop_event.set()
+        self._poll_stop.set()
         for sub_id in list(self._cov_subs.values()):
             try:
                 self.client.unsubscribe_cov(sub_id)
@@ -173,6 +175,11 @@ class TabBACnet(ttk.Frame):
         self.client.disconnect()
         self._tree.delete(*self._tree.get_children())
         self._detail_tree.delete(*self._detail_tree.get_children())
+        # Effacer la sélection courante
+        if hasattr(self, "_selected_device"):
+            del self._selected_device
+        if hasattr(self, "_selected_object"):
+            del self._selected_object
         self._set_status("Déconnecté")
 
     def _btn_whois(self):
@@ -286,28 +293,28 @@ class TabBACnet(ttk.Frame):
 
     def _on_poll_toggle(self):
         if self._var_poll.get():
-            self._stop_event.clear()
+            self._poll_stop.clear()
             self._poll_thread = threading.Thread(
                 target=self._poll_loop, daemon=True
             )
             self._poll_thread.start()
         else:
-            self._stop_event.set()
+            self._poll_stop.set()
 
     def _poll_loop(self):
         import time
-        while not self._stop_event.is_set():
+        while not self._poll_stop.is_set():
             if hasattr(self, "_selected_device") and self.client.is_connected:
                 try:
                     value, unit, reliability = self.client.read_present_value(
                         self._selected_device, self._selected_object
                     )
-                    self.after(0, lambda v=value, u=unit, r=reliability:
-                        self._update_detail_row(self._selected_object, v, u, r))
+                    self.after(0, lambda v=value, u=unit, r=reliability, o=self._selected_object:
+                        self._update_detail_row(o, v, u, r))
                 except Exception as exc:
                     self.after(0, lambda e=exc:
                         self._set_status(f"Polling : {e}"))
-            self._stop_event.wait(self._cyclic_interval)
+            self._poll_stop.wait(self._cyclic_interval)
 
     def _btn_details(self):
         if not hasattr(self, "_selected_device"):
@@ -354,17 +361,28 @@ class TabBACnet(ttk.Frame):
         except (ValueError, TypeError):
             priority = 8
         try:
+            value: object
             try:
                 value = float(val_str)
             except ValueError:
                 value = val_str
-            self.client.write_present_value(
-                self._selected_device, self._selected_object, value, priority
-            )
-            self._set_status(f"Écriture réussie : {value} (priorité {priority})")
-            self._refresh_detail()
-        except Exception as exc:
-            Messagebox.show_error(str(exc), "Erreur d'écriture")
+        except Exception:
+            return
+
+        dev = self._selected_device
+        obj = self._selected_object
+
+        def _worker():
+            try:
+                self.client.write_present_value(dev, obj, value, priority)
+                self.after(0, lambda: self._set_status(
+                    f"Écriture réussie : {value} (priorité {priority})"
+                ))
+                self.after(0, self._refresh_detail)
+            except Exception as exc:
+                self.after(0, lambda e=exc: Messagebox.show_error(str(e), "Erreur d'écriture"))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _on_cov_toggle(self):
         if not hasattr(self, "_selected_object"):
