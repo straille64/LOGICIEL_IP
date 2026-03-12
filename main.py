@@ -10,7 +10,9 @@ from core.admin import is_admin, restart_as_admin
 from modules.tab_config import TabConfig
 from modules.tab_scanner import TabScanner
 from modules.tab_modbus import TabModbus
+from modules.tab_mbus import TabMBus
 from modules.tab_pcvue import TabPCVue
+from modules.tab_bacnet import TabBACnet
 
 
 def _resource(rel_path: str) -> str:
@@ -42,7 +44,9 @@ class App(ttk.Window):
             _load_icon("icones/Configuration & Outils.png"),
             _load_icon("icones/Scanner R\u00e9seau.png"),
             _load_icon("icones/Modbus.png"),
+            _load_icon("icones/M-Bus.png"),
             _load_icon("icones/Pcvue trames.png"),
+            _load_icon("icones/BACnet.png"),   # index 5 — optionnel
         ]
 
     def _set_window_icon(self):
@@ -57,21 +61,20 @@ class App(ttk.Window):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=BOTH, expand=True, padx=5, pady=(5, 0))
 
-        tab_cfg = TabConfig(self.notebook)
-        self.notebook.add(tab_cfg, text="  Configuration & Outils  ",
-                          image=self._tab_icons[0], compound=LEFT)
+        self._add_tab(TabConfig(self.notebook),  "  Configuration & Outils  ", 0)
+        self._add_tab(TabScanner(self.notebook), "  Scanner Réseau  ",         1)
+        self._add_tab(TabModbus(self.notebook),  "  Modbus  ",                 2)
+        self._add_tab(TabMBus(self.notebook),    "  M-Bus  ",                  3)
+        self._add_tab(TabPCVue(self.notebook),   "  Pcvue trames  ",           4)
+        self._add_tab(TabBACnet(self.notebook),  "  BACnet/IP  ",              5)
 
-        tab_scan = TabScanner(self.notebook)
-        self.notebook.add(tab_scan, text="  Scanner Réseau  ",
-                          image=self._tab_icons[1], compound=LEFT)
-
-        tab_modbus = TabModbus(self.notebook)
-        self.notebook.add(tab_modbus, text="  Modbus  ",
-                          image=self._tab_icons[2], compound=LEFT)
-
-        tab_pcvue = TabPCVue(self.notebook)
-        self.notebook.add(tab_pcvue, text="  Pcvue trames  ",
-                          image=self._tab_icons[3], compound=LEFT)
+    def _add_tab(self, frame, text: str, icon_index: int):
+        """Ajoute un onglet — l'icône est optionnelle (ignorée si None)."""
+        icon = self._tab_icons[icon_index] if icon_index < len(self._tab_icons) else None
+        if icon:
+            self.notebook.add(frame, text=text, image=icon, compound=LEFT)
+        else:
+            self.notebook.add(frame, text=text)
 
     def _build_status_bar(self):
         bar = ttk.Frame(self, bootstyle=DARK)
